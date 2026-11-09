@@ -25,8 +25,9 @@ There is no login. Anyone on your network, or connected to the hotspot, can use 
 
 ### Usuários (users)
 
-- The list shows every user with a masked PIN. **Mostrar** reveals the PIN, **Editar** loads the user into the form, and **Remover** deletes the user after a confirmation.
+- The list shows every user with a masked PIN and a **Com desafio** or **Sem desafio** tag. **Mostrar** reveals the PIN, **Editar** loads the user into the form, and **Remover** deletes the user after a confirmation.
 - The form adds a new user, or saves changes while editing. **Cancelar** leaves edit mode.
+- **Fazer o desafio de matemática** (checked by default) decides whether the user must answer a math question after typing the PIN. When it is unchecked, the keypad greets the user by name for 3 s and goes back to the PIN prompt.
 - Rules: the name has 1 to 16 characters without accents; the PIN has 1 to 8 digits and must be different from every other user's PIN. Up to 20 users.
 
 ### Rede (network)
@@ -61,9 +62,9 @@ Successful writes return `{"ok":true}`. Errors return a 4xx or 5xx status with `
 |---|---|---|---|
 | GET | `/` | | The web page |
 | GET | `/api/status` | | Device, WiFi and user summary (see below) |
-| GET | `/api/users` | | `{"max":20,"users":[{"name":"Daniel","pin":"1234"}]}` |
-| POST | `/api/users` | `name`, `pin` | Adds a user |
-| POST | `/api/users/update` | `index`, `name`, `pin` | Replaces the user at position `index` (0-based) |
+| GET | `/api/users` | | `{"max":20,"users":[{"name":"Daniel","pin":"1234","challenge":true}]}` |
+| POST | `/api/users` | `name`, `pin`, optional `challenge` | Adds a user. `challenge` defaults to on |
+| POST | `/api/users/update` | `index`, `name`, `pin`, optional `challenge` | Replaces the user at position `index` (0-based). Without `challenge`, the current setting is kept |
 | POST | `/api/users/delete` | `index` | Removes the user at position `index` |
 | POST | `/api/wifi/scan` | | Starts a WiFi scan in the background |
 | GET | `/api/wifi/scan` | | `{"scanning":true}` while scanning, then `{"scanning":false,"networks":[{"ssid":"Casa","rssi":-58,"secure":true}]}` |
@@ -71,11 +72,13 @@ Successful writes return `{"ok":true}`. Errors return a 4xx or 5xx status with `
 | POST | `/api/reboot` | | Reboots after about 1 s |
 | POST | `/api/update` | file field (any name) | Installs the firmware and reboots after about 1.5 s |
 
+`challenge` accepts `1`, `true` or `on` to turn the math challenge on, and `0`, `false` or `off` to turn it off. Any other value counts as missing.
+
 Example `/api/status` response:
 
 ```json
 {
-  "version": "2.0.0",
+  "version": "2.1.0",
   "uptime": 93784,
   "heap": 182340,
   "hostname": "keypad",
@@ -102,7 +105,10 @@ curl http://keypad.local/api/users
 # Add a user
 curl -d name=Ana -d pin=4321 http://keypad.local/api/users
 
-# Change the PIN of the first user
+# Add a user who skips the math challenge
+curl -d name=Bia -d pin=1111 -d challenge=0 http://keypad.local/api/users
+
+# Change the PIN of the first user (the challenge setting is kept)
 curl -d index=0 -d name=Daniel -d pin=2580 http://keypad.local/api/users/update
 ```
 

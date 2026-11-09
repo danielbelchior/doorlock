@@ -39,6 +39,8 @@ h2{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:
 label{display:block;margin-bottom:14px;font-size:.95rem;font-weight:600}
 input{display:block;width:100%;min-height:48px;margin-top:6px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font:inherit;font-size:16px}
 input[type=file]{padding:10px}
+label.check{display:flex;align-items:center;gap:12px;min-height:48px;cursor:pointer}
+label.check input{flex:none;width:24px;height:24px;min-height:0;margin:0;padding:0;accent-color:var(--accent)}
 input:focus{outline:2px solid var(--accent);outline-offset:1px}
 button{min-height:44px;padding:10px 18px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);font:inherit;font-weight:600;cursor:pointer;touch-action:manipulation}
 button:disabled{opacity:.55;cursor:default}
@@ -55,6 +57,8 @@ button.danger{color:var(--danger)}
 .who{flex:1 1 160px;min-width:0}
 .who strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pin{color:var(--muted);font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.15em}
+.tag{display:inline-block;margin-left:10px;padding:0 8px;border-radius:999px;background:var(--line);color:var(--muted);font-size:.8rem}
+.tag.on{background:var(--ok);color:var(--on-ok)}
 .actions{display:flex;flex-wrap:wrap;gap:8px}
 .actions button{padding:8px 14px}
 .empty{padding:24px;color:var(--muted);text-align:center}
@@ -101,6 +105,8 @@ progress{display:block;width:100%;height:12px;margin:0 0 14px}
     <p class="hint">Até 16 caracteres, sem acentos (o LCD não os mostra).</p>
     <label>Senha<input id="uPin" maxlength="8" required inputmode="numeric" pattern="[0-9]{1,8}"></label>
     <p class="hint">1 a 8 dígitos, diferente da senha dos outros usuários.</p>
+    <label class="check"><input id="uChallenge" type="checkbox" checked>Fazer o desafio de matemática</label>
+    <p class="hint">Desmarcado: o teclado só mostra o nome, sem a conta.</p>
     <div class="row">
      <button id="uSubmit" class="primary">Adicionar</button>
      <button id="uCancel" type="button" hidden>Cancelar</button>
@@ -216,7 +222,8 @@ function renderUsers() {
   }
   ul.innerHTML = users.map((u, i) =>
     '<li class="user' + (i === editing ? ' editing' : '') + '" data-i="' + i + '">' +
-    '<div class="who"><strong>' + esc(u.name) + '</strong><span class="pin">' + dots(u.pin.length) + '</span></div>' +
+    '<div class="who"><strong>' + esc(u.name) + '</strong><span class="pin">' + dots(u.pin.length) + '</span>' +
+    '<span class="tag' + (u.challenge ? ' on' : '') + '">' + (u.challenge ? 'Com desafio' : 'Sem desafio') + '</span></div>' +
     '<div class="actions">' +
     '<button type="button" data-act="show">Mostrar</button>' +
     '<button type="button" data-act="edit">Editar</button>' +
@@ -258,6 +265,7 @@ function startEdit(i) {
   editing = i;
   $('#uName').value = users[i].name;
   $('#uPin').value = users[i].pin;
+  $('#uChallenge').checked = users[i].challenge;
   $('#formTitle').textContent = 'Editar usuário';
   $('#uSubmit').textContent = 'Salvar alterações';
   $('#uCancel').hidden = false;
@@ -278,7 +286,7 @@ $('#uCancel').onclick = resetForm;
 
 $('#userForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const data = {name: $('#uName').value.trim(), pin: $('#uPin').value.trim()};
+  const data = {name: $('#uName').value.trim(), pin: $('#uPin').value.trim(), challenge: $('#uChallenge').checked ? 1 : 0};
   const btn = $('#uSubmit');
   btn.disabled = true;
   try {

@@ -1,6 +1,6 @@
 # Doorlock: ESP32 PIN keypad with a math challenge
 
-An ESP32 project for fun. People type a PIN on a 4x4 keypad. If the PIN belongs to someone, the 16x2 LCD greets them by name and asks a quick math question (for example `256 + 139 = ?`). An RGBW LED gives color feedback. You manage people and PINs from a web page that works on phones, tablets and computers.
+An ESP32 project for fun. People type a PIN on a 4x4 keypad. If the PIN belongs to someone, the 16x2 LCD greets them by name and, if that person has the math challenge turned on, asks a quick math question (for example `256 + 139 = ?`). An RGBW LED and an active buzzer give color and sound feedback. You manage people and PINs from a web page that works on phones, tablets and computers.
 
 > This is a game, not a security device. PINs are stored in plain text, and the web page has no login: anyone on your network can open it. Do not use it to control a real lock.
 
@@ -9,8 +9,10 @@ An ESP32 project for fun. People type a PIN on a 4x4 keypad. If the PIN belongs 
 ## Features
 
 - **Keypad game:** PIN entry with masked digits, a greeting, then a random addition, subtraction or multiplication challenge.
+- **Math challenge per user:** each user has an option to do the challenge or not. Without it, the keypad only greets the user by name.
 - **LED feedback:** yellow flash on every key, 3 green blinks for a correct PIN or answer, 3 red blinks for a wrong one.
-- **Web page (Portuguese UI), no login:** add, edit and remove users; choose a WiFi network; install firmware updates; restart. The layout adapts to phones, tablets (two columns from 768 px) and desktops, with large touch targets and dark mode.
+- **Sound feedback:** an MH-FMD active buzzer clicks on every key, beeps twice quickly for a correct PIN or answer, and gives one long beep for a wrong one. It is switched with `digitalWrite()`, so it needs no extra library.
+- **Web page (Portuguese UI), no login:** add, edit and remove users, and choose who does the math challenge; choose a WiFi network; install firmware updates; restart. The layout adapts to phones, tablets (two columns from 768 px) and desktops, with large touch targets and dark mode.
 - **Keypad menu:** type `2205` then `D` to open a menu on the LCD: open the setup hotspot, show the IP address, or restart.
 - **WiFi setup hotspot:** an open `Teclado-XXXX` network with a captive portal. It starts only from the keypad menu, never by itself.
 - **Auto-reconnect:** if the WiFi is down or drops, the device keeps retrying the saved network forever.
@@ -30,6 +32,8 @@ An ESP32 project for fun. People type a PIN on a 4x4 keypad. If the PIN belongs 
 | LCD I2C | VCC / GND | 5V (VIN) / GND |
 | SK6812 LED | DIN (through 330 Ω) | GPIO 23 |
 | SK6812 LED | VCC / GND | 5V (VIN) / GND, with 100 nF across them |
+| MH-FMD buzzer | I/O | GPIO 33 |
+| MH-FMD buzzer | VCC / GND | **3V3** / GND (not 5V, see [docs/hardware.md](docs/hardware.md#electrical-notes)) |
 
 The full parts list, the board pinout and the electrical notes are in [docs/hardware.md](docs/hardware.md).
 
@@ -92,6 +96,7 @@ src/
   game.h/.cpp             Keypad state machine (PIN, greeting, challenge, result)
   display.h/.cpp          16x2 LCD wrapper
   led.h/.cpp              Non-blocking SK6812 LED effects
+  buzzer.h/.cpp           Non-blocking active buzzer beep patterns
   users.h/.cpp            User list stored in flash (NVS)
   settings.h/.cpp         WiFi credentials stored in flash
   wifi_service.h/.cpp     Station mode, endless reconnect, setup hotspot, mDNS
@@ -100,6 +105,12 @@ src/
   util.h                  Overflow-safe timing helper
 docs/                     Documentation and diagrams
 ```
+
+## Upgrading from firmware v2.0
+
+1. **Wire the buzzer** (optional): I/O to GPIO 33, VCC to 3V3, GND to GND. Without it the firmware works as before, just silently.
+2. **Update from the browser.** The partition table did not change, so the Sistema tab or `curl` works (see [docs/web-ui.md](docs/web-ui.md#firmware-updates-ota)).
+3. **Existing users keep the math challenge.** Turn it off per user in the **Usuários** tab.
 
 ## Upgrading from firmware v1
 

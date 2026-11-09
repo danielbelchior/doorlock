@@ -2,8 +2,8 @@
 
 #include "util.h"
 
-Game::Game(Display& display, StatusLed& led, UserStore& users)
-    : display_(display), led_(led), users_(users) {}
+Game::Game(Display& display, StatusLed& led, Buzzer& buzzer, UserStore& users)
+    : display_(display), led_(led), buzzer_(buzzer), users_(users) {}
 
 void Game::begin() {
   resetToPrompt();
@@ -131,14 +131,21 @@ void Game::submitPin() {
   input_ = "";
 
   if (index >= 0) {
-    strncpy(userName_, users_.at(static_cast<uint8_t>(index)).name, USER_NAME_LEN);
+    const uint8_t userIndex = static_cast<uint8_t>(index);
+    strncpy(userName_, users_.at(userIndex).name, USER_NAME_LEN);
     userName_[USER_NAME_LEN] = '\0';
     display_.show("Bem-vindo(a):", userName_);
     led_.blink(LED_GREEN);
-    enterTimedState(State::Greeting, GREETING_MS);
+    buzzer_.play(Sound::Success);
+    if (users_.challenge(userIndex)) {
+      enterTimedState(State::Greeting, GREETING_MS);
+    } else {
+      enterTimedState(State::Result, RESULT_MS);
+    }
   } else {
     display_.show("ERRO", "Senha invalida");
     led_.blink(LED_RED);
+    buzzer_.play(Sound::Error);
     enterTimedState(State::Result, RESULT_MS);
   }
 }
@@ -180,9 +187,11 @@ void Game::submitAnswer() {
   if (given == answer_) {
     display_.show("Correto! :)", userName_);
     led_.blink(LED_GREEN);
+    buzzer_.play(Sound::Success);
   } else {
     display_.show("Errado! :(", String("Era: ") + String(answer_));
     led_.blink(LED_RED);
+    buzzer_.play(Sound::Error);
   }
   enterTimedState(State::Result, RESULT_MS);
 }

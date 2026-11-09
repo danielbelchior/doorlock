@@ -10,6 +10,7 @@
 | 1 | SK6812 5050 RGBW LED | One pixel, `NEO_GRBW` color order. |
 | 1 | 330 Ω resistor | In series with the LED data line (DIN). |
 | 1 | 100 nF ceramic capacitor | Between LED VCC and GND, as close to the LED as possible. |
+| 1 | MH-FMD active buzzer module | 3 pins: VCC, I/O, GND. Low-level trigger (a PNP transistor switches the buzzer on when I/O is LOW). The active buzzer has its own oscillator, so it beeps at one fixed pitch as long as it is switched on. |
 | - | Wires, breadboard or perfboard | All parts share a common ground. |
 
 ## Wiring diagram
@@ -35,6 +36,9 @@
 | SK6812 | DIN | LED data, through 330 Ω | GPIO 23 | |
 | SK6812 | VCC | Power | 5V (VIN) | |
 | SK6812 | GND | Ground | GND | |
+| MH-FMD buzzer | I/O | On/off (LOW = on) | GPIO 33 | new in v2.1 |
+| MH-FMD buzzer | VCC | Power | **3V3** | new in v2.1 |
+| MH-FMD buzzer | GND | Ground | GND | new in v2.1 |
 
 All pin numbers live in `src/config.h`. If you change one, update this table and both diagrams.
 
@@ -52,6 +56,8 @@ The diagram below shows where each wire lands on the common 30-pin DevKit V1. Ot
 - **Strapping pins.** GPIO 0, 2, 12 and 15 decide how the ESP32 boots. Keep them free. v2 moved the keypad columns off GPIO 2 and 15 for this reason. GPIO 5 is also a strapping pin, but a keypad row is safe there because it is only connected to something while a key is pressed.
 - **Pins to avoid.** GPIO 6 to 11 are wired to the flash chip. GPIO 34 to 39 are input-only and have no internal pull-ups, so they cannot drive a keypad.
 - **GPIO 16 and 17.** On WROVER modules (the ones with PSRAM) these two pins are used by the PSRAM. On such a board, move keypad R4 and C1 to free pins (for example GPIO 27 and GPIO 32) and update `src/config.h`.
+- **Buzzer at 3.3V, not 5V.** The MH-FMD switches the buzzer with a PNP transistor whose emitter sits at the module's VCC. At 5V, the ESP32's 3.3V HIGH level cannot turn the transistor off, so the buzzer would beep all the time. Powered from 3V3 it works correctly. Many active buzzers are rated 3.5 to 5V, so at 3.3V it is quieter; if it is too quiet for you, drive a 5V buzzer through an NPN transistor (HIGH = on) and set `BUZZER_ACTIVE_LOW` to `false`.
+- **Buzzer idle level.** The firmware holds GPIO 33 HIGH when silent, because the module turns on with LOW. If your module or circuit switches on with HIGH, set `BUZZER_ACTIVE_LOW` to `false` in `src/config.h`.
 - **Power.** Everything runs from the USB 5V through the DevKit's VIN pin. At brightness 80 the single LED draws only a few milliamps.
 
 ## Troubleshooting
@@ -64,4 +70,6 @@ The diagram below shows where each wire lands on the common 30-pin DevKit V1. Ot
 | Some keys do nothing | A loose row or column wire. Each row and each column serves 4 keys, so the pattern of dead keys tells you which wire it is. |
 | LED colors are wrong (for example red shows as green) | Your LED uses a different color order. Change `NEO_GRBW` to `NEO_RGBW` in `src/led.cpp`. |
 | LED stays dark or flickers | See "LED data level" above. Also check the 330 Ω resistor and the ground connection. |
+| Buzzer is silent | Check that VCC is on 3V3, I/O on GPIO 33, and GND shared with the ESP32. |
+| Buzzer beeps all the time, or only when idle | VCC is on 5V instead of 3V3, or `BUZZER_ACTIVE_LOW` does not match the module. |
 | Board does not boot or flash with the keypad connected | A keypad wire is on a strapping pin. Use the pins in the table above. |

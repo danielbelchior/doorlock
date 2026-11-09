@@ -47,6 +47,9 @@ Everything you would normally change is in `src/config.h`.
 | `DISPLAY_I2C_ADDRESS` | `0x27` | LCD backpack address |
 | `LED_BRIGHTNESS` | 80 | 0 to 255 |
 | `LED_KEY_FLASH_MS`, `LED_BLINK_MS`, `LED_BLINK_COUNT` | 250, 250, 3 | LED timings |
+| `PIN_BUZZER` | 33 | MH-FMD buzzer I/O |
+| `BUZZER_ACTIVE_LOW` | `true` | The module turns on with LOW (MH-FMD). `false` for a circuit that turns on with HIGH |
+| `BUZZER_KEY_MS` | 30 | Key click length |
 | `GREETING_MS`, `RESULT_MS`, `NOTICE_MS` | 1500, 3000, 4000 | How long each screen stays |
 | `MENU_CODE` | `"2205"` | Code typed before `D` to open the menu |
 | `MENU_TIMEOUT_MS` | 30000 | The menu closes after this much inactivity |
@@ -73,13 +76,14 @@ Each module owns one piece of hardware or one concern. `main.cpp` creates them, 
 | `game` | Keypad state machine, the menu, and everything shown on the LCD |
 | `display` | LCD wrapper. Rewrites a line only when its text changes, which avoids flicker |
 | `led` | Non-blocking LED effects: key flash and N blinks |
-| `users` | User list in NVS, validation, add, edit and remove |
+| `buzzer` | Non-blocking on/off beep patterns for the active buzzer |
+| `users` | User list and per-user math challenge option in NVS, validation, add, edit and remove |
 | `settings` | WiFi credentials in NVS |
 | `wifi_service` | Station connection, endless retries, on-demand setup hotspot, captive-portal DNS, mDNS |
 | `web_ui` | HTTP routes, JSON API, OTA upload, delayed reboot |
 | `web_page.h` | The single-page web UI, stored in flash |
 
-Every `loop()` pass runs, in order: `wifi.update()`, `web.update()`, `led.update()`, `game.update()`, the WiFi event handler, then one keypad read. Nothing in the loop blocks. Timers compare `millis()` with `timeReached()` from `util.h`, which stays correct when `millis()` wraps around after about 49 days.
+Every `loop()` pass runs, in order: `wifi.update()`, `web.update()`, `led.update()`, `buzzer.update()`, `game.update()`, the WiFi event handler, then one keypad read. Nothing in the loop blocks. Timers compare `millis()` with `timeReached()` from `util.h`, which stays correct when `millis()` wraps around after about 49 days.
 
 The one exception is a firmware upload: the web server processes the whole upload in one request, so the keypad does not respond during an update. The LCD shows "Atualizando..." meanwhile.
 
@@ -88,7 +92,8 @@ The one exception is a firmware upload: the web server processes the whole uploa
 ```mermaid
 stateDiagram-v2
     [*] --> EnterPin
-    EnterPin --> Greeting: # with a known PIN (green blinks)
+    EnterPin --> Greeting: # with a known PIN, challenge on (green blinks)
+    EnterPin --> Result: # with a known PIN, challenge off (green blinks)
     EnterPin --> Result: # with an unknown PIN (red blinks)
     EnterPin --> EnterPin: no key for 20 s clears input
     Greeting --> Challenge: after 1.5 s
@@ -110,10 +115,12 @@ stateDiagram-v2
 | `EnterPin` | `Digite a senha:` | one `*` per digit | digits, `#`, `*` |
 | `Greeting` | `Bem-vindo(a):` | user name | ignored |
 | `Challenge` | `256 + 139 = ?` | `> ` and the typed answer | digits, `#`, `*` |
-| `Result` | `Correto! :)` / `Errado! :(` / `ERRO` | name / `Era: <answer>` / `Senha invalida` | any key returns to the prompt |
+| `Result` | `Correto! :)` / `Errado! :(` / `ERRO` / `Bem-vindo(a):` | name / `Era: <answer>` / `Senha invalida` / name | any key returns to the prompt |
 | `Menu` | `1Hotspot 2IP  >` and the chosen digit | `3Reiniciar *Sair` | `1` to `3` choose, `D` confirms, `*` exits |
 | `Notice` | `IP:` / `Sem WiFi` / the hotspot name | the IP / `Conectando...` or `nao configurado` / `192.168.4.1` | any key dismisses it; a digit also starts a PIN |
 | `Busy` | `Atualizando...` or `Reiniciando...` | `Nao desligue!` or empty | ignored |
+
+A user with the math challenge turned off skips `Greeting` and `Challenge`: the welcome screen is shown as a `Result` for 3 s. The option is read when the PIN is accepted.
 
 The user name is copied when the PIN is accepted, so the result screen still works if someone edits or removes that user from the web page in the meantime.
 
@@ -136,6 +143,18 @@ The user name is copied when the PIN is accepted, so the result screen still wor
 
 A key press does not interrupt a running green or red blink. (In v1 it did.) Yellow is `(255, 160, 0, 0)`: with full green the SK6812 looks green, not yellow.
 
+## Buzzer
+
+| Event | Sound |
+|---|---|
+| Any key | Short click, 30 ms |
+| Correct PIN or correct answer, firmware update succeeded | Two quick beeps: 70 ms on, 70 ms off, 70 ms on |
+| Wrong PIN or wrong answer, firmware update failed | One long beep, 600 ms |
+
+The buzzer is an active one: it has its own oscillator and always plays the same pitch, so the sounds differ only in rhythm. The firmware just switches GPIO 33 with `digitalWrite()`; no PWM and no library are involved. Do not drive it with `tone()` or PWM, which only makes an active buzzer crackle.
+
+Like the LED, a key click does not interrupt a success or error pattern, while a new pattern replaces the one playing. The `#` key first clicks and then immediately plays the result pattern. The patterns are the arrays at the top of `src/buzzer.cpp`.
+
 ## WiFi behavior
 
 1. **At boot,** if a network is stored, the device connects to it in the background. The keypad works right away. If no network is stored, the LCD shows `Sem WiFi / nao configurado` for a few seconds and the device waits for you to open the hotspot from the menu.
@@ -153,11 +172,13 @@ Data lives in the ESP32 NVS flash partition through the `Preferences` library.
 |---|---|---|---|
 | `keypad` | `count` | `uint8` | Number of users |
 | `keypad` | `users` | blob, 520 bytes | `User users[20]`, each `{ char name[17]; char pin[9]; }` |
+| `keypad` | `challenge` | blob, 20 bytes | One byte per user, same order as `users`: 1 = math challenge on, 0 = off |
 | `settings` | `wifi_ssid`, `wifi_pass` | string | WiFi credentials |
 
 - The `keypad` namespace, its keys and the `User` layout are the same as in v1, so an upgrade keeps existing users.
+- `challenge` was added in v2.1 so that the `User` layout stays compatible. If it is missing or has the wrong size, every user gets the challenge, which is the v2.0 behavior.
 - The user list is written only when it changes (add, edit or remove), never in a loop or on key presses.
-- The blob is written before the count. A power cut between the two writes leaves the old count, which still points at valid entries.
+- The blobs are written before the count. A power cut between the two writes leaves the old count, which still points at valid entries.
 - On a fresh device the defaults `Daniel/1234` and `Silvia/5678` are created. If you delete every user, the list stays empty; v1 recreated the defaults in that case.
 - Changing `MAX_USERS`, `USER_NAME_LEN`, `USER_PIN_LEN` or `struct User` changes the blob size. At the next boot the stored blob no longer matches, so the firmware logs a warning and restores the defaults. Write a migration if you need to keep the data.
 
@@ -178,6 +199,7 @@ These rules keep the firmware reliable. They also give an AI assistant or a new 
 
 - Identifiers, comments and documentation in English. Text shown to people (LCD and web UI) in Portuguese.
 - No libraries beyond the three listed above. Prefer what ships with the ESP32 core.
+- Every sound must be non-blocking: add a pattern array in `src/buzzer.cpp`, never `delay()`.
 - If you change a GPIO, update `src/config.h`, `docs/hardware.md` and both SVG diagrams.
 
 **Manual test checklist**
@@ -187,14 +209,17 @@ These rules keep the firmware reliable. They also give an AI assistant or a new 
 3. Menu `1 D`: the LCD shows the hotspot name and `192.168.4.1`. Joining the open hotspot opens the setup page.
 4. Configure WiFi from the Rede tab: the device connects, the LCD shows the IP, `http://keypad.local/` works, and the hotspot closes after about a minute.
 5. Menu `2 D` shows the IP. Menu `3 D` shows `Reiniciando...` and restarts.
-6. `1234 #` shows "Bem-vindo(a): Daniel" with 3 green blinks, then a challenge.
+6. `1234 #` shows "Bem-vindo(a): Daniel" with 3 green blinks, then a challenge (the default users have it on).
 7. A correct answer shows "Correto! :)" with green blinks. A wrong one shows "Errado! :(" and the right answer, with red blinks.
 8. `9999 #` shows "ERRO / Senha invalida" with 3 red blinks and returns to the prompt after 3 s.
 9. Pressing keys during a blink does not interrupt it.
 10. Web UI: add, edit and remove users; a duplicate PIN is rejected; changes survive a reboot.
 11. Turn the router off for a few minutes: no hotspot appears. Turn it back on: the device reconnects by itself.
 12. Upload a new `firmware.bin`: the progress bar fills, the LCD shows "Atualizando...", and the device reboots into the new version (check the version in the Sistema tab).
-13. Any key lights the LED yellow for about 250 ms.
+13. Any key lights the LED yellow for about 250 ms and makes a short click.
+14. A correct PIN or answer gives two quick beeps; a wrong one gives one long beep. Keys pressed during a pattern do not cut it.
+15. Uncheck **Fazer o desafio de matemática** for a user: their PIN shows "Bem-vindo(a): <name>" for 3 s and returns to the prompt, with no math question. Check it again: the challenge comes back. The setting survives a reboot.
+16. The buzzer is silent between sounds (no hum).
 
 **Definition of done for a change**
 
@@ -217,5 +242,6 @@ These rules keep the firmware reliable. They also give an AI assistant or a new 
 - Challenge difficulty levels, chosen with keys `B` to `D`, and a time limit to answer.
 - Store PIN hashes (SHA-256 with salt) instead of plain text.
 - MQTT events for Home Assistant (login success or failure, challenge results).
-- A buzzer for sound feedback, or an SSD1306 OLED instead of the LCD.
+- A mute option for the buzzer in the web page.
+- An SSD1306 OLED instead of the LCD.
 - Export and import of the user list.

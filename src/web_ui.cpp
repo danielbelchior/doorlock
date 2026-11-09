@@ -61,6 +61,13 @@ bool parseIndex(const String& text, int& out) {
   return true;
 }
 
+// Missing or unrecognized values keep the fallback.
+bool parseFlag(const String& text, bool fallback) {
+  if (text == "1" || text == "true" || text == "on") return true;
+  if (text == "0" || text == "false" || text == "off") return false;
+  return fallback;
+}
+
 }  // namespace
 
 WebUi::WebUi(UserStore& users, Settings& settings, WifiService& wifi)
@@ -158,7 +165,7 @@ void WebUi::handleStatus() {
 
 void WebUi::handleUsersList() {
   String json;
-  json.reserve(64 + users_.count() * 48);
+  json.reserve(64 + users_.count() * 64);
   json += "{\"max\":";
   json += String(MAX_USERS);
   json += ",\"users\":[";
@@ -169,6 +176,8 @@ void WebUi::handleUsersList() {
     json += jsonString(user.name);
     json += ",\"pin\":";
     json += jsonString(user.pin);
+    json += ",\"challenge\":";
+    json += jsonBool(users_.challenge(i));
     json += '}';
   }
   json += "]}";
@@ -176,7 +185,8 @@ void WebUi::handleUsersList() {
 }
 
 void WebUi::handleUserAdd() {
-  sendUserResult(users_.add(server_.arg("name"), server_.arg("pin")));
+  sendUserResult(
+      users_.add(server_.arg("name"), server_.arg("pin"), parseFlag(server_.arg("challenge"), true)));
 }
 
 void WebUi::handleUserUpdate() {
@@ -185,7 +195,9 @@ void WebUi::handleUserUpdate() {
     sendUserResult(UserResult::NotFound);
     return;
   }
-  sendUserResult(users_.update(index, server_.arg("name"), server_.arg("pin")));
+  const bool current = index < users_.count() ? users_.challenge(static_cast<uint8_t>(index)) : true;
+  sendUserResult(users_.update(index, server_.arg("name"), server_.arg("pin"),
+                               parseFlag(server_.arg("challenge"), current)));
 }
 
 void WebUi::handleUserDelete() {

@@ -4,6 +4,7 @@
 
 #include <functional>
 
+#include "buzzer.h"
 #include "config.h"
 #include "display.h"
 #include "led.h"
@@ -12,13 +13,14 @@
 // Values match the menu digits shown on the LCD.
 enum class MenuAction : uint8_t { Hotspot = 1, ShowIp = 2, Restart = 3 };
 
-// Keypad state machine: PIN entry -> greeting -> math challenge -> result,
-// plus a service menu opened with MENU_CODE followed by D.
+// Keypad state machine: PIN entry -> greeting -> math challenge -> result
+// (users without the challenge stop at the greeting), plus a service menu
+// opened with MENU_CODE followed by D.
 class Game {
  public:
   using MenuHandler = std::function<void(MenuAction)>;
 
-  Game(Display& display, StatusLed& led, UserStore& users);
+  Game(Display& display, StatusLed& led, Buzzer& buzzer, UserStore& users);
 
   // Called after the menu closes, so the handler may show a notice.
   void onMenuAction(MenuHandler handler) { menuHandler_ = handler; }
@@ -54,6 +56,7 @@ class Game {
 
   Display& display_;
   StatusLed& led_;
+  Buzzer& buzzer_;
   UserStore& users_;
   MenuHandler menuHandler_;
 

@@ -6,6 +6,8 @@ namespace {
 constexpr const char* NVS_NAMESPACE = "keypad";
 constexpr const char* KEY_COUNT = "count";
 constexpr const char* KEY_USERS = "users";
+// Added in v2.1. Missing (older firmware) means every user keeps the challenge.
+constexpr const char* KEY_CHALLENGE = "challenge";
 
 bool isValidName(const String& name) {
   if (name.length() < 1 || name.length() > USER_NAME_LEN) return false;
@@ -53,6 +55,7 @@ const char* userResultMessage(UserResult result) {
 
 void UserStore::begin() {
   memset(users_, 0, sizeof(users_));
+  memset(challenge_, 1, sizeof(challenge_));
   prefs_.begin(NVS_NAMESPACE, false);
 
   if (!prefs_.isKey(KEY_COUNT)) {
@@ -68,6 +71,9 @@ void UserStore::begin() {
       return;
     }
     prefs_.getBytes(KEY_USERS, users_, sizeof(users_));
+    if (prefs_.isKey(KEY_CHALLENGE) && prefs_.getBytesLength(KEY_CHALLENGE) == sizeof(challenge_)) {
+      prefs_.getBytes(KEY_CHALLENGE, challenge_, sizeof(challenge_));
+    }
   }
   count_ = stored;
 
@@ -85,18 +91,19 @@ int UserStore::findByPin(const String& pin) const {
   return -1;
 }
 
-UserResult UserStore::add(String name, String pin) {
+UserResult UserStore::add(String name, String pin, bool withChallenge) {
   if (count_ >= MAX_USERS) return UserResult::Full;
   const UserResult check = validate(name, pin, -1);
   if (check != UserResult::Ok) return check;
 
   copyField(users_[count_].name, sizeof(users_[count_].name), name);
   copyField(users_[count_].pin, sizeof(users_[count_].pin), pin);
+  challenge_[count_] = withChallenge ? 1 : 0;
   count_++;
   return save() ? UserResult::Ok : UserResult::StorageError;
 }
 
-UserResult UserStore::update(int index, String name, String pin) {
+UserResult UserStore::update(int index, String name, String pin, bool withChallenge) {
   if (index < 0 || index >= count_) return UserResult::NotFound;
   const UserResult check = validate(name, pin, index);
   if (check != UserResult::Ok) return check;
@@ -104,15 +111,20 @@ UserResult UserStore::update(int index, String name, String pin) {
   memset(&users_[index], 0, sizeof(User));
   copyField(users_[index].name, sizeof(users_[index].name), name);
   copyField(users_[index].pin, sizeof(users_[index].pin), pin);
+  challenge_[index] = withChallenge ? 1 : 0;
   return save() ? UserResult::Ok : UserResult::StorageError;
 }
 
 UserResult UserStore::remove(int index) {
   if (index < 0 || index >= count_) return UserResult::NotFound;
 
-  for (int i = index; i < count_ - 1; i++) users_[i] = users_[i + 1];
+  for (int i = index; i < count_ - 1; i++) {
+    users_[i] = users_[i + 1];
+    challenge_[i] = challenge_[i + 1];
+  }
   count_--;
   memset(&users_[count_], 0, sizeof(User));
+  challenge_[count_] = 1;
   return save() ? UserResult::Ok : UserResult::StorageError;
 }
 
@@ -129,6 +141,7 @@ UserResult UserStore::validate(String& name, String& pin, int ignoreIndex) const
 
 void UserStore::seedDefaults() {
   memset(users_, 0, sizeof(users_));
+  memset(challenge_, 1, sizeof(challenge_));
   copyField(users_[0].name, sizeof(users_[0].name), "Daniel");
   copyField(users_[0].pin, sizeof(users_[0].pin), "1234");
   copyField(users_[1].name, sizeof(users_[1].name), "Silvia");
@@ -139,9 +152,10 @@ void UserStore::seedDefaults() {
 }
 
 bool UserStore::save() {
-  // Blob first, count last: a power cut in between leaves the old count,
+  // Blobs first, count last: a power cut in between leaves the old count,
   // which still matches valid entries.
   bool ok = prefs_.putBytes(KEY_USERS, users_, sizeof(users_)) == sizeof(users_);
+  ok = prefs_.putBytes(KEY_CHALLENGE, challenge_, sizeof(challenge_)) == sizeof(challenge_) && ok;
   ok = prefs_.putUChar(KEY_COUNT, count_) == 1 && ok;
   if (!ok) Serial.println("[users] failed to save");
   return ok;

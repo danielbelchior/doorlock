@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 
+#include "buzzer.h"
 #include "config.h"
 #include "display.h"
 #include "game.h"
@@ -29,10 +30,11 @@ byte colPins[KEYPAD_COLS] = {PIN_KEYPAD_COL_1, PIN_KEYPAD_COL_2, PIN_KEYPAD_COL_
 Keypad keypad(makeKeymap(keymap), rowPins, colPins, KEYPAD_ROWS, KEYPAD_COLS);
 Display display;
 StatusLed led;
+Buzzer buzzer;
 UserStore users;
 Settings settings;
 WifiService wifi(settings);
-Game game(display, led, users);
+Game game(display, led, buzzer, users);
 WebUi web(users, settings, wifi);
 
 bool restartPending = false;
@@ -83,20 +85,26 @@ void setup() {
   display.begin();
   display.show("Teclado v" FIRMWARE_VERSION, "Iniciando...");
   led.begin();
+  buzzer.begin();
   randomSeed(esp_random());
 
   settings.begin();
   users.begin();
   wifi.begin();  // must run before web.begin(): it starts the TCP/IP stack
 
-  web.onOtaStart([]() { game.showBusy("Atualizando...", "Nao desligue!"); });
+  web.onOtaStart([]() {
+    buzzer.stop();  // loop() stalls during the upload, so a note would never end
+    game.showBusy("Atualizando...", "Nao desligue!");
+  });
   web.onOtaEnd([](bool success) {
     if (success) {
       game.showBusy("Atualizado!", "Reiniciando...");
       led.blink(LED_GREEN);
+      buzzer.play(Sound::Success);
     } else {
       game.endBusy();
       led.blink(LED_RED);
+      buzzer.play(Sound::Error);
     }
   });
   web.begin();
@@ -110,6 +118,7 @@ void loop() {
   wifi.update();
   web.update();
   led.update();
+  buzzer.update();
   game.update();
   handleWifiEvents();
 
@@ -119,5 +128,6 @@ void loop() {
   if (key == NO_KEY) return;
 
   led.keyFlash();
+  buzzer.play(Sound::Key);
   game.handleKey(key);
 }

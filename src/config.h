@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-#define FIRMWARE_VERSION "2.0.0"
+#define FIRMWARE_VERSION "2.1.0"
 
 // ---------------------------------------------------------------------------
 // Pins (ESP32 DevKit). Read docs/hardware.md before changing any of these:
@@ -24,6 +24,7 @@ constexpr uint8_t PIN_KEYPAD_COL_4 = 26;  // pin 8 (GPIO15 in v1)
 constexpr uint8_t PIN_I2C_SDA = 21;
 constexpr uint8_t PIN_I2C_SCL = 22;
 constexpr uint8_t PIN_LED = 23;
+constexpr uint8_t PIN_BUZZER = 33;  // MH-FMD I/O
 
 // ---------------------------------------------------------------------------
 // LCD 16x2 with PCF8574 I2C backpack
@@ -39,6 +40,14 @@ constexpr uint8_t LED_BRIGHTNESS = 80;  // 0-255
 constexpr uint32_t LED_KEY_FLASH_MS = 250;
 constexpr uint32_t LED_BLINK_MS = 250;
 constexpr uint8_t LED_BLINK_COUNT = 3;
+
+// ---------------------------------------------------------------------------
+// MH-FMD active buzzer module. Power it from 3V3, not 5V (see
+// docs/hardware.md). Set BUZZER_ACTIVE_LOW to false for a module or circuit
+// that switches the buzzer on with a HIGH input.
+// ---------------------------------------------------------------------------
+constexpr bool BUZZER_ACTIVE_LOW = true;
+constexpr uint16_t BUZZER_KEY_MS = 30;  // key click length
 
 // ---------------------------------------------------------------------------
 // Keypad game

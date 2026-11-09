@@ -28,6 +28,9 @@
 <text x="426" y="335" text-anchor="start" fill="#f9fafb" font-size="13" font-weight="bold">32</text>
 <circle cx="412" cy="366" r="7" fill="#fbbf24" stroke="#92400e" stroke-width="1.5"/>
 <text x="426" y="371" text-anchor="start" fill="#f9fafb" font-size="13" font-weight="bold">33</text>
+<line x1="372" y1="366" x2="405" y2="366" stroke="#164e63" stroke-width="2" stroke-linecap="round"/>
+<rect x="52" y="352" width="320" height="28" rx="7" fill="#cffafe" stroke="#164e63" stroke-width="1"/>
+<text x="362" y="371" text-anchor="end" fill="#164e63" font-weight="bold">Buzzer I/O (MH-FMD)</text>
 <circle cx="412" cy="402" r="7" fill="#fbbf24" stroke="#92400e" stroke-width="1.5"/>
 <text x="426" y="407" text-anchor="start" fill="#f9fafb" font-size="13" font-weight="bold">25</text>
 <line x1="372" y1="402" x2="405" y2="402" stroke="#065f46" stroke-width="2" stroke-linecap="round"/>
@@ -120,18 +123,26 @@
 <text x="678" y="587" fill="#713f12" font-weight="bold">Leave free (boot pin, used in v1)</text>
 <circle cx="628" cy="618" r="7" fill="#fbbf24" stroke="#92400e" stroke-width="1.5"/>
 <text x="614" y="623" text-anchor="end" fill="#f9fafb" font-size="13" font-weight="bold">GND</text>
+<line x1="635" y1="618" x2="668" y2="618" stroke="#111827" stroke-width="2" stroke-linecap="round"/>
+<rect x="668" y="604" width="320" height="28" rx="7" fill="#e5e7eb" stroke="#111827" stroke-width="1"/>
+<text x="678" y="623" fill="#111827" font-weight="bold">GND · Buzzer GND</text>
 <circle cx="628" cy="654" r="7" fill="#fbbf24" stroke="#92400e" stroke-width="1.5"/>
 <text x="614" y="659" text-anchor="end" fill="#f9fafb" font-size="13" font-weight="bold">3V3</text>
-<rect x="60" y="788" width="22" height="16" rx="4" fill="#dbeafe" stroke="#1e3a8a"/>
-<text x="90" y="801" font-size="13">Keypad row</text>
-<rect x="220" y="788" width="22" height="16" rx="4" fill="#d1fae5" stroke="#065f46"/>
-<text x="250" y="801" font-size="13">Keypad column</text>
-<rect x="380" y="788" width="22" height="16" rx="4" fill="#ede9fe" stroke="#4c1d95"/>
-<text x="410" y="801" font-size="13">I2C (LCD)</text>
-<rect x="540" y="788" width="22" height="16" rx="4" fill="#ffedd5" stroke="#7c2d12"/>
-<text x="570" y="801" font-size="13">LED data</text>
-<rect x="700" y="788" width="22" height="16" rx="4" fill="#fee2e2" stroke="#7f1d1d"/>
-<text x="730" y="801" font-size="13">Power</text>
-<rect x="860" y="788" width="22" height="16" rx="4" fill="#fef9c3" stroke="#713f12"/>
-<text x="890" y="801" font-size="13">Leave free</text>
+<line x1="635" y1="654" x2="668" y2="654" stroke="#7f1d1d" stroke-width="2" stroke-linecap="round"/>
+<rect x="668" y="640" width="320" height="28" rx="7" fill="#fee2e2" stroke="#7f1d1d" stroke-width="1"/>
+<text x="678" y="659" fill="#7f1d1d" font-weight="bold">3.3V · Buzzer VCC</text>
+<rect x="30" y="788" width="22" height="16" rx="4" fill="#dbeafe" stroke="#1e3a8a"/>
+<text x="60" y="801" font-size="13">Keypad row</text>
+<rect x="175" y="788" width="22" height="16" rx="4" fill="#d1fae5" stroke="#065f46"/>
+<text x="205" y="801" font-size="13">Keypad column</text>
+<rect x="320" y="788" width="22" height="16" rx="4" fill="#ede9fe" stroke="#4c1d95"/>
+<text x="350" y="801" font-size="13">I2C (LCD)</text>
+<rect x="465" y="788" width="22" height="16" rx="4" fill="#ffedd5" stroke="#7c2d12"/>
+<text x="495" y="801" font-size="13">LED data</text>
+<rect x="610" y="788" width="22" height="16" rx="4" fill="#fee2e2" stroke="#7f1d1d"/>
+<text x="640" y="801" font-size="13">Power</text>
+<rect x="755" y="788" width="22" height="16" rx="4" fill="#fef9c3" stroke="#713f12"/>
+<text x="785" y="801" font-size="13">Leave free</text>
+<rect x="900" y="788" width="22" height="16" rx="4" fill="#cffafe" stroke="#164e63"/>
+<text x="930" y="801" font-size="13">Buzzer</text>
 </svg>
