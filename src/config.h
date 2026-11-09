@@ -1,0 +1,77 @@
+#pragma once
+
+#include <Arduino.h>
+
+#define FIRMWARE_VERSION "2.0.0"
+
+// ---------------------------------------------------------------------------
+// Pins (ESP32 DevKit). Read docs/hardware.md before changing any of these:
+// avoid the strapping pins (0, 2, 12, 15), the flash pins (6-11) and the
+// input-only pins (34-39).
+// ---------------------------------------------------------------------------
+constexpr uint8_t KEYPAD_ROWS = 4;
+constexpr uint8_t KEYPAD_COLS = 4;
+
+constexpr uint8_t PIN_KEYPAD_ROW_1 = 19;  // keypad connector pin 1
+constexpr uint8_t PIN_KEYPAD_ROW_2 = 18;  // pin 2
+constexpr uint8_t PIN_KEYPAD_ROW_3 = 5;   // pin 3
+constexpr uint8_t PIN_KEYPAD_ROW_4 = 17;  // pin 4
+constexpr uint8_t PIN_KEYPAD_COL_1 = 16;  // pin 5
+constexpr uint8_t PIN_KEYPAD_COL_2 = 4;   // pin 6
+constexpr uint8_t PIN_KEYPAD_COL_3 = 25;  // pin 7 (GPIO2 in v1)
+constexpr uint8_t PIN_KEYPAD_COL_4 = 26;  // pin 8 (GPIO15 in v1)
+
+constexpr uint8_t PIN_I2C_SDA = 21;
+constexpr uint8_t PIN_I2C_SCL = 22;
+constexpr uint8_t PIN_LED = 23;
+
+// ---------------------------------------------------------------------------
+// LCD 16x2 with PCF8574 I2C backpack
+// ---------------------------------------------------------------------------
+constexpr uint8_t DISPLAY_I2C_ADDRESS = 0x27;  // some backpacks use 0x3F
+constexpr uint8_t DISPLAY_COLS = 16;
+constexpr uint8_t DISPLAY_ROWS = 2;
+
+// ---------------------------------------------------------------------------
+// SK6812 RGBW status LED
+// ---------------------------------------------------------------------------
+constexpr uint8_t LED_BRIGHTNESS = 80;  // 0-255
+constexpr uint32_t LED_KEY_FLASH_MS = 250;
+constexpr uint32_t LED_BLINK_MS = 250;
+constexpr uint8_t LED_BLINK_COUNT = 3;
+
+// ---------------------------------------------------------------------------
+// Keypad game
+// ---------------------------------------------------------------------------
+constexpr uint32_t GREETING_MS = 1500;
+constexpr uint32_t RESULT_MS = 3000;
+constexpr uint32_t NOTICE_MS = 4000;
+constexpr uint32_t PIN_ENTRY_TIMEOUT_MS = 20000;
+constexpr uint32_t CHALLENGE_TIMEOUT_MS = 60000;
+constexpr uint8_t ANSWER_MAX_LEN = 6;
+
+// ---------------------------------------------------------------------------
+// Users. Changing any of these changes the stored blob size: the stored list
+// is then discarded and the default users are restored on the next boot.
+// ---------------------------------------------------------------------------
+constexpr uint8_t MAX_USERS = 20;
+constexpr uint8_t USER_NAME_LEN = 16;
+constexpr uint8_t USER_PIN_LEN = 8;
+
+// ---------------------------------------------------------------------------
+// Network and web admin. WiFi credentials and the admin login are normally
+// set from the web UI and stored in flash; these are only first-boot defaults.
+// ---------------------------------------------------------------------------
+constexpr const char* WIFI_HOSTNAME = "keypad";  // http://keypad.local/
+constexpr const char* DEFAULT_WIFI_SSID = "";
+constexpr const char* DEFAULT_WIFI_PASS = "";
+constexpr const char* DEFAULT_ADMIN_USER = "admin";
+constexpr const char* DEFAULT_ADMIN_PASS = "admin";
+
+constexpr const char* SETUP_AP_PREFIX = "Teclado";  // hotspot name: Teclado-XXXX
+constexpr const char* SETUP_AP_PASS = "teclado123";  // WPA2 needs 8+ characters
+
+constexpr uint32_t WIFI_RETRY_MS = 15000;          // retry interval without hotspot
+constexpr uint32_t WIFI_RETRY_WITH_AP_MS = 30000;  // retries disturb hotspot clients
+constexpr uint32_t WIFI_AP_FALLBACK_MS = 30000;    // offline time before the hotspot starts
+constexpr uint32_t WIFI_AP_LINGER_MS = 60000;      // hotspot stays up after STA connects

@@ -1,0 +1,215 @@
+# Firmware
+
+## Building
+
+### PlatformIO (recommended)
+
+The repository is a PlatformIO project. `platformio.ini` selects the board, the libraries and the partition table.
+
+```sh
+pio run                 # build
+pio run -t upload       # build and flash over USB
+pio device monitor      # serial logs at 115200 baud
+```
+
+The built firmware is `.pio/build/esp32dev/firmware.bin`. Upload it from the web admin (Sistema tab) for later updates.
+
+### Arduino IDE
+
+1. Install the **esp32 by Espressif Systems** board package (core 2.x or 3.x).
+2. Install these libraries with the Library Manager:
+
+   | Library | Author |
+   |---|---|
+   | Keypad | Mark Stanley, Alexander Brevig |
+   | LiquidCrystal I2C | Frank de Brabander |
+   | Adafruit NeoPixel | Adafruit |
+
+   `WiFi`, `WebServer`, `ESPmDNS`, `DNSServer`, `Preferences`, `Update` and `Wire` come with the ESP32 core.
+3. Create a folder named `doorlock`, copy every file from `src/` into it, and rename `main.cpp` to `doorlock.ino`. The `.ino` file must have the same name as its folder.
+4. Select **Tools > Board > ESP32 Dev Module** and **Tools > Partition Scheme > Minimal SPIFFS (1.9MB APP with OTA)**.
+5. Upload. For a later web update, use **Sketch > Export Compiled Binary** and upload the `.bin` file from the web admin.
+
+### Partition table
+
+Web updates need two app slots: the new firmware is written to the inactive slot, then the device boots from it. The default table has two 1.25 MB slots, which leaves little room once WiFi, the web server and the update code are linked in. `min_spiffs.csv` provides two 1.9 MB slots instead. The NVS area that holds users and settings sits at the same address in every standard table, so it is not erased when you switch tables.
+
+## Configuration
+
+Everything you would normally change is in `src/config.h`.
+
+| Constant | Default | Meaning |
+|---|---|---|
+| `PIN_KEYPAD_ROW_1..4` | 19, 18, 5, 17 | Keypad rows (connector pins 1 to 4) |
+| `PIN_KEYPAD_COL_1..4` | 16, 4, 25, 26 | Keypad columns (connector pins 5 to 8) |
+| `PIN_I2C_SDA`, `PIN_I2C_SCL` | 21, 22 | LCD I2C bus |
+| `PIN_LED` | 23 | SK6812 data |
+| `DISPLAY_I2C_ADDRESS` | `0x27` | LCD backpack address |
+| `LED_BRIGHTNESS` | 80 | 0 to 255 |
+| `LED_KEY_FLASH_MS`, `LED_BLINK_MS`, `LED_BLINK_COUNT` | 250, 250, 3 | LED timings |
+| `GREETING_MS`, `RESULT_MS`, `NOTICE_MS` | 1500, 3000, 4000 | How long each screen stays |
+| `PIN_ENTRY_TIMEOUT_MS` | 20000 | A half-typed PIN is cleared after this much inactivity |
+| `CHALLENGE_TIMEOUT_MS` | 60000 | An unanswered challenge returns to the prompt |
+| `ANSWER_MAX_LEN` | 6 | Digits allowed in a challenge answer |
+| `MAX_USERS`, `USER_NAME_LEN`, `USER_PIN_LEN` | 20, 16, 8 | User list limits (see [Storage](#storage)) |
+| `WIFI_HOSTNAME` | `keypad` | mDNS name: `http://keypad.local/` |
+| `DEFAULT_WIFI_SSID`, `DEFAULT_WIFI_PASS` | empty | Optional first-boot WiFi credentials |
+| `DEFAULT_ADMIN_USER`, `DEFAULT_ADMIN_PASS` | `admin`, `admin` | First-boot web login |
+| `SETUP_AP_PREFIX`, `SETUP_AP_PASS` | `Teclado`, `teclado123` | Setup hotspot name prefix and password |
+| `WIFI_RETRY_MS`, `WIFI_RETRY_WITH_AP_MS` | 15000, 30000 | Reconnect interval without and with the hotspot running |
+| `WIFI_AP_FALLBACK_MS` | 30000 | Offline time before the hotspot opens |
+| `WIFI_AP_LINGER_MS` | 60000 | The hotspot stays open this long after the device reconnects |
+
+The `DEFAULT_*` values only apply while nothing is stored in flash. After you save WiFi or admin settings from the web admin, the stored values win.
+
+## Architecture
+
+Each module owns one piece of hardware or one concern. `main.cpp` creates them, connects them and runs the loop.
+
+| Module | Responsibility |
+|---|---|
+| `main.cpp` | Creates all objects, reads the keypad, routes key presses, reacts to WiFi events, hooks OTA progress to the LCD |
+| `game` | Keypad state machine and everything shown on the LCD during play |
+| `display` | LCD wrapper. Rewrites a line only when its text changes, which avoids flicker |
+| `led` | Non-blocking LED effects: key flash and N blinks |
+| `users` | User list in NVS, validation, add, edit and remove |
+| `settings` | WiFi credentials and admin login in NVS |
+| `wifi_service` | Station connection, retries, setup hotspot, captive-portal DNS, mDNS |
+| `web_ui` | HTTP routes, JSON API, basic auth, OTA upload, delayed reboot |
+| `web_page.h` | The single-page admin UI, stored in flash |
+
+Every `loop()` pass runs, in order: `wifi.update()`, `web.update()`, `led.update()`, `game.update()`, the WiFi event handler, then one keypad read. Nothing in the loop blocks. Timers compare `millis()` with `timeReached()` from `util.h`, which stays correct when `millis()` wraps around after about 49 days.
+
+The one exception is a firmware upload: the web server processes the whole upload in one request, so the keypad does not respond during an update. The LCD shows "Atualizando..." meanwhile.
+
+## Keypad state machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> EnterPin
+    EnterPin --> Greeting: # with a known PIN (green blinks)
+    EnterPin --> Result: # with an unknown PIN (red blinks)
+    EnterPin --> EnterPin: no key for 20 s clears input
+    Greeting --> Challenge: after 1.5 s
+    Challenge --> Result: # with an answer (green or red blinks)
+    Challenge --> EnterPin: no key for 60 s
+    Result --> EnterPin: after 3 s or any key
+    EnterPin --> Notice: key A, or a WiFi event while idle
+    Notice --> EnterPin: after the timeout or any key
+    EnterPin --> Busy: firmware upload starts
+    Busy --> EnterPin: upload failed
+```
+
+| State | LCD line 1 | LCD line 2 | Keys |
+|---|---|---|---|
+| `EnterPin` | `Digite a senha:` | one `*` per digit | digits, `#`, `*` |
+| `Greeting` | `Bem-vindo(a):` | user name | ignored |
+| `Challenge` | `256 + 139 = ?` | `> ` and the typed answer | digits, `#`, `*` |
+| `Result` | `Correto! :)` / `Errado! :(` / `ERRO` | name / `Era: <answer>` / `Senha invalida` | any key returns to the prompt |
+| `Notice` | `IP:` or the hotspot name | the IP address | any key dismisses it; a digit also starts a PIN |
+| `Busy` | `Atualizando...` | `Nao desligue!` | ignored |
+
+The user name is copied when the PIN is accepted, so the result screen still works if someone edits or removes that user from the web admin in the meantime.
+
+### Challenges
+
+| Type | Operands |
+|---|---|
+| Addition | `a` and `b` in [100, 500) |
+| Subtraction | `a` in [200, 900), `b` in [100, a), so the result is always positive |
+| Multiplication | `a` in [12, 100), `b` in [2, 10) |
+
+## LED
+
+| Event | Effect |
+|---|---|
+| Any key | Yellow for 250 ms |
+| Correct PIN or correct answer | 3 green blinks, then off |
+| Wrong PIN or wrong answer | 3 red blinks, then off |
+| Firmware update succeeded / failed | 3 green / 3 red blinks |
+
+A key press does not interrupt a running green or red blink. (In v1 it did.) Yellow is `(255, 160, 0, 0)`: with full green the SK6812 looks green, not yellow.
+
+## WiFi behavior
+
+1. **At boot,** if a network is stored, the device connects to it in the background. The keypad works right away. If no network is stored, the setup hotspot opens immediately.
+2. **When connected,** mDNS announces `keypad.local` and the LCD shows the IP for a few seconds (only if nobody is typing).
+3. **When the network is unreachable or lost,** the device retries every 15 s. After 30 s offline it also opens the setup hotspot `Teclado-XXXX` (`XXXX` comes from the chip's MAC address). With the hotspot open, retries happen every 30 s, because each retry briefly disturbs hotspot clients.
+4. **In hotspot mode,** a DNS server answers every name with `192.168.4.1`, so phones and tablets open the setup page by themselves (captive portal).
+5. **After reconnecting,** the hotspot stays open for 60 s more, then closes.
+6. **Saving a new network** in the web admin stores it and reconnects right away.
+
+## Storage
+
+Data lives in the ESP32 NVS flash partition through the `Preferences` library.
+
+| Namespace | Key | Type | Content |
+|---|---|---|---|
+| `keypad` | `count` | `uint8` | Number of users |
+| `keypad` | `users` | blob, 520 bytes | `User users[20]`, each `{ char name[17]; char pin[9]; }` |
+| `settings` | `wifi_ssid`, `wifi_pass` | string | WiFi credentials |
+| `settings` | `admin_user`, `admin_pass` | string | Web login |
+
+- The `keypad` namespace, its keys and the `User` layout are the same as in v1, so an upgrade keeps existing users.
+- The user list is written only when it changes (add, edit or remove), never in a loop or on key presses.
+- The blob is written before the count. A power cut between the two writes leaves the old count, which still points at valid entries.
+- On a fresh device the defaults `Daniel/1234` and `Silvia/5678` are created. If you delete every user, the list stays empty; v1 recreated the defaults in that case.
+- Changing `MAX_USERS`, `USER_NAME_LEN`, `USER_PIN_LEN` or `struct User` changes the blob size. At the next boot the stored blob no longer matches, so the firmware logs a warning and restores the defaults. Write a migration if you need to keep the data.
+
+## Developer guide
+
+These rules keep the firmware reliable. They also give an AI assistant or a new contributor the context needed to change it.
+
+**Architecture rules**
+
+- Keep `loop()` non-blocking. Do not use `delay()` outside `setup()`. Use `millis()` deadlines with `timeReached()`.
+- To add a keypad state: add it to `Game::State`, handle its timer in `Game::update()` and its keys in `Game::handleKey()`. Then update the state table and diagram in this file.
+- LCD text must be ASCII and at most 16 characters per line. `Display::show()` cuts longer text.
+- Change users only through `UserStore`, which validates input and saves. Never write to flash in a loop or on every key press.
+- Everything sent to the browser goes through `jsonString()`, and the page escapes it again with `esc()` before inserting HTML.
+- Every new web route must call `authorize()` first.
+- Keep `<Keypad.h>` as the last include in `main.cpp`. It defines generic macros such as `OPEN` and `CLOSED`.
+
+**Conventions**
+
+- Identifiers, comments and documentation in English. Text shown to people (LCD and web UI) in Portuguese.
+- No libraries beyond the three listed above. Prefer what ships with the ESP32 core.
+- If you change a GPIO, update `src/config.h`, `docs/hardware.md` and both SVG diagrams.
+
+**Manual test checklist**
+
+1. Fresh device: the hotspot opens, the LCD shows its name and IP, and the setup page opens after joining it.
+2. Configure WiFi from the Rede tab: the device connects, the LCD shows the IP, `http://keypad.local/` works, and the hotspot closes after about a minute.
+3. `1234 #` shows "Bem-vindo(a): Daniel" with 3 green blinks, then a challenge.
+4. A correct answer shows "Correto! :)" with green blinks. A wrong one shows "Errado! :(" and the right answer, with red blinks.
+5. `9999 #` shows "ERRO / Senha invalida" with 3 red blinks and returns to the prompt after 3 s.
+6. Pressing keys during a blink does not interrupt it.
+7. Web UI: add, edit and remove users; a duplicate PIN is rejected; changes survive a reboot.
+8. Turn the router off: after 30 s the hotspot opens. Turn it back on: the device reconnects by itself.
+9. Upload a new `firmware.bin`: the progress bar fills, the LCD shows "Atualizando...", and the device reboots into the new version (check the version in the Sistema tab).
+10. Any key lights the LED yellow for about 250 ms. Key `A` shows the IP.
+
+**Definition of done for a change**
+
+- Builds without new warnings for `esp32dev`.
+- No `delay()` in the loop path.
+- Documentation updated: features, pins, limitations and roadmap.
+
+## Known limitations
+
+1. **Weak security by design.** PINs are stored and shown in plain text. The web admin uses HTTP basic auth over plain HTTP, and the hotspot password is public in this repository. Use it only on a trusted home network.
+2. **No limit on PIN attempts** at the keypad.
+3. **No CSRF protection.** The API uses POST and basic auth only.
+4. **User edits use list positions.** If two people edit the list at the same time, one may act on a stale position. Reload the page before editing if someone else might be making changes.
+5. **The keypad is unresponsive during a firmware upload** (a few seconds).
+6. **Names are ASCII only,** because the LCD cannot show accents.
+
+## Roadmap ideas
+
+- Lock the keypad for a while after several wrong PINs, with LCD and LED feedback.
+- A score per user and a ranking in the web admin.
+- Challenge difficulty levels, chosen with keys `B` to `D`, and a time limit to answer.
+- Store PIN hashes (SHA-256 with salt) instead of plain text.
+- MQTT events for Home Assistant (login success or failure, challenge results).
+- A buzzer for sound feedback, or an SSD1306 OLED instead of the LCD.
+- Export and import of the user list.
