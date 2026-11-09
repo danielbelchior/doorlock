@@ -82,6 +82,25 @@ Default users on a fresh device: `Daniel` with PIN `1234` and `Silvia` with PIN 
 
 ## Documentation
 
+New here? Start with [docs/FUNDAMENTALS.md](docs/FUNDAMENTALS.md). AI assistants should read [docs/AI.md](docs/AI.md) first.
+
+| Topic | Document |
+|---|---|
+| Big picture, concepts, documentation map | [docs/FUNDAMENTALS.md](docs/FUNDAMENTALS.md) |
+| Modules, main loop, data flow, storage | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| LCD screens, light and sound, web page design | [docs/DESIGN.md](docs/DESIGN.md) |
+| File-by-file guide | [docs/CODEBASE.md](docs/CODEBASE.md) |
+| Build, configure, extend | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
+| HTTP API reference | [docs/API.md](docs/API.md) |
+| Flashing, OTA, upgrades | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| Problems and fixes | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
+| Checks and manual test checklist | [docs/TESTING.md](docs/TESTING.md) |
+| Code and docs conventions | [docs/STYLEGUIDE.md](docs/STYLEGUIDE.md) |
+| Why things are the way they are | [docs/DECISIONS.md](docs/DECISIONS.md) |
+| Rules and context for AI assistants | [docs/AI.md](docs/AI.md) |
+
+Reference pages:
+
 - [docs/hardware.md](docs/hardware.md): parts list, wiring, board pinout, electrical notes and troubleshooting.
 - [docs/firmware.md](docs/firmware.md): building, configuration, architecture, state machine, storage and the developer guide.
 - [docs/web-ui.md](docs/web-ui.md): the web page, the setup hotspot, firmware updates and the HTTP API.
