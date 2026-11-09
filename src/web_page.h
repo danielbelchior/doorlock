@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-// Single-page admin UI (Portuguese). Talks to the JSON API in web_ui.cpp.
+// Single-page web UI (Portuguese). Talks to the JSON API in web_ui.cpp.
 // Layout: one column on phones, two columns from 768 px (tablets and up).
 static const char INDEX_HTML[] PROGMEM = R"rawliteral(<!DOCTYPE html>
 <html lang="pt-BR">
@@ -12,8 +12,8 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(<!DOCTYPE html>
 <meta name="color-scheme" content="light dark">
 <title>Teclado ESP32</title>
 <style>
-:root{--bg:#f2f4f7;--card:#fff;--text:#1d2939;--muted:#667085;--line:#e4e7ec;--accent:#0e7c66;--on-accent:#fff;--danger:#c4320a;--warn:#fef0c7;--on-warn:#7a2e0e;--ok:#d1fadf;--on-ok:#05603a;--radius:14px}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1418;--card:#182026;--text:#e7ecf0;--muted:#98a2b3;--line:#2a343c;--accent:#33c3a0;--on-accent:#04221b;--danger:#f97066;--warn:#3d2c0c;--on-warn:#fedf89;--ok:#0c3b2a;--on-ok:#75e0a7}}
+:root{--bg:#f2f4f7;--card:#fff;--text:#1d2939;--muted:#667085;--line:#e4e7ec;--accent:#0e7c66;--on-accent:#fff;--danger:#c4320a;--ok:#d1fadf;--on-ok:#05603a;--radius:14px}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1418;--card:#182026;--text:#e7ecf0;--muted:#98a2b3;--line:#2a343c;--accent:#33c3a0;--on-accent:#04221b;--danger:#f97066;--ok:#0c3b2a;--on-ok:#75e0a7}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
@@ -49,7 +49,6 @@ button.danger{color:var(--danger)}
 .row>button{flex:1 1 auto}
 .hint{margin:-6px 0 14px;color:var(--muted);font-size:.9rem}
 .hint.lead{margin-top:0}
-.banner{margin-bottom:20px;padding:14px 16px;border-radius:12px;background:var(--warn);color:var(--on-warn)}
 .users,.scan{display:grid;gap:10px;margin:0;padding:0;list-style:none}
 .user{display:flex;flex-wrap:wrap;align-items:center;gap:12px;min-width:0;padding:12px 14px;border:1px solid var(--line);border-radius:12px}
 .user.editing{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
@@ -89,7 +88,6 @@ progress{display:block;width:100%;height:12px;margin:0 0 14px}
 </header>
 
 <main class="wrap">
- <div id="pwWarn" class="banner" hidden>Você ainda usa a senha padrão do administrador. <a href="#system">Altere-a em Sistema</a>.</div>
 
  <section id="users">
   <div class="grid two">
@@ -116,6 +114,7 @@ progress{display:block;width:100%;height:12px;margin:0 0 14px}
    <div class="card">
     <h2>Estado da conexão</h2>
     <dl id="netInfo" class="kv"></dl>
+    <p class="hint lead" style="margin:16px 0 0">Sem acesso à rede? Abra o menu do teclado e escolha a opção 1 para ligar o hotspot de configuração.</p>
    </div>
    <form id="wifiForm" class="card" autocomplete="off">
     <h2>Configurar WiFi</h2>
@@ -123,7 +122,7 @@ progress{display:block;width:100%;height:12px;margin:0 0 14px}
     <ul id="scanList" class="scan"></ul>
     <label>Nome da rede (SSID)<input id="wSsid" maxlength="32" required autocapitalize="none" autocorrect="off" spellcheck="false"></label>
     <label>Senha da rede<input id="wPass" type="password" maxlength="63" autocomplete="new-password"></label>
-    <p class="hint">Deixe vazio em redes abertas. Depois de salvar, o teclado se conecta à nova rede e mostra o IP no LCD (tecla A).</p>
+    <p class="hint">Deixe vazio em redes abertas. Depois de salvar, o teclado se conecta à nova rede e mostra o IP no LCD. Para ver o IP de novo, use a opção 2 do menu do teclado.</p>
     <button class="primary block">Salvar e conectar</button>
    </form>
   </div>
@@ -136,6 +135,13 @@ progress{display:block;width:100%;height:12px;margin:0 0 14px}
      <h2>Dispositivo</h2>
      <dl id="sysInfo" class="kv"></dl>
     </div>
+    <div class="card">
+     <h2>Reiniciar</h2>
+     <p class="hint lead">Os usuários e as configurações continuam guardados.</p>
+     <button id="rebootBtn" type="button" class="danger block">Reiniciar o dispositivo</button>
+    </div>
+   </div>
+   <div class="col">
     <form id="otaForm" class="card">
      <h2>Atualizar firmware</h2>
      <p class="hint lead">Envie o arquivo <code>firmware.bin</code> gerado pelo PlatformIO ou pela Arduino IDE (Sketch &gt; Exportar binário compilado).</p>
@@ -143,20 +149,6 @@ progress{display:block;width:100%;height:12px;margin:0 0 14px}
      <progress id="otaBar" max="100" value="0" hidden></progress>
      <button id="otaBtn" class="primary block">Enviar e instalar</button>
     </form>
-   </div>
-   <div class="col">
-    <form id="adminForm" class="card" autocomplete="off">
-     <h2>Acesso do administrador</h2>
-     <label>Usuário<input id="aUser" maxlength="32" required autocapitalize="none" autocorrect="off" spellcheck="false"></label>
-     <label>Nova senha<input id="aPass" type="password" minlength="4" maxlength="64" required autocomplete="new-password"></label>
-     <label>Confirmar senha<input id="aPass2" type="password" minlength="4" maxlength="64" required autocomplete="new-password"></label>
-     <button class="primary block">Salvar</button>
-    </form>
-    <div class="card">
-     <h2>Reiniciar</h2>
-     <p class="hint lead">Os usuários e as configurações continuam guardados.</p>
-     <button id="rebootBtn" type="button" class="danger block">Reiniciar o dispositivo</button>
-    </div>
    </div>
   </div>
  </section>
@@ -170,7 +162,7 @@ const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const TABS = ['users', 'network', 'system'];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-let users = [], maxUsers = 0, editing = -1, adminLoaded = false, ssidLoaded = false;
+let users = [], maxUsers = 0, editing = -1, ssidLoaded = false;
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -338,8 +330,6 @@ async function loadStatus() {
     ['Memória livre', Math.round(s.heap / 1024) + ' KB'],
     ['Usuários', s.users.count + ' / ' + s.users.max]
   ]);
-  $('#pwWarn').hidden = !s.defaultPassword;
-  if (!adminLoaded) { $('#aUser').value = s.adminUser; adminLoaded = true; }
   if (!ssidLoaded) { $('#wSsid').value = w.ssid; ssidLoaded = true; }
 }
 
@@ -386,21 +376,11 @@ $('#wifiForm').addEventListener('submit', async e => {
   try {
     await api('/api/wifi', {ssid: ssid, pass: pass});
     $('#wPass').value = '';
-    toast('Salvo. Conectando a ' + ssid + '... O novo IP aparece no LCD (tecla A).');
+    toast('Salvo. Conectando a ' + ssid + '... O novo IP aparece no LCD.');
   } catch (err) { toast(err.message, true); }
 });
 
 /* ---------- System ---------- */
-$('#adminForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  if ($('#aPass').value !== $('#aPass2').value) return toast('As senhas não coincidem.', true);
-  try {
-    await api('/api/admin', {user: $('#aUser').value.trim(), pass: $('#aPass').value});
-    toast('Acesso alterado. Entre de novo com os novos dados.');
-    setTimeout(() => location.reload(), 2000);
-  } catch (err) { toast(err.message, true); }
-});
-
 $('#otaForm').addEventListener('submit', e => {
   e.preventDefault();
   const file = $('#otaFile').files[0];

@@ -28,6 +28,9 @@ void Game::update() {
     case State::Challenge:
       if (timeReached(lastActivityMs_ + CHALLENGE_TIMEOUT_MS)) resetToPrompt();
       break;
+    case State::Menu:
+      if (timeReached(lastActivityMs_ + MENU_TIMEOUT_MS)) resetToPrompt();
+      break;
     case State::Busy:
       break;
   }
@@ -40,11 +43,24 @@ void Game::handleKey(char key) {
     case State::EnterPin:
       if (key == '#') {
         if (input_.length() > 0) submitPin();
+      } else if (key == 'D') {
+        if (input_ == MENU_CODE) openMenu();
       } else if (key == '*') {
         input_ = "";
         renderPrompt();
       } else if (appendDigit(key, USER_PIN_LEN)) {
         renderPrompt();
+      }
+      break;
+
+    case State::Menu:
+      if (key == '*') {
+        resetToPrompt();
+      } else if (key == 'D') {
+        if (menuChoice_) runMenuChoice();
+      } else if (key >= '1' && key <= '3') {
+        menuChoice_ = key;
+        renderMenu();
       }
       break;
 
@@ -169,6 +185,26 @@ void Game::submitAnswer() {
     led_.blink(LED_RED);
   }
   enterTimedState(State::Result, RESULT_MS);
+}
+
+void Game::openMenu() {
+  input_ = "";
+  menuChoice_ = 0;
+  state_ = State::Menu;
+  led_.blink(LED_GREEN, 1);
+  renderMenu();
+}
+
+void Game::renderMenu() {
+  String top = "1Hotspot 2IP  >";
+  if (menuChoice_) top += menuChoice_;
+  display_.show(top, "3Reiniciar *Sair");
+}
+
+void Game::runMenuChoice() {
+  const MenuAction action = static_cast<MenuAction>(menuChoice_ - '0');
+  resetToPrompt();
+  if (menuHandler_) menuHandler_(action);
 }
 
 void Game::enterTimedState(State state, uint32_t durationMs) {

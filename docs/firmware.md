@@ -12,7 +12,7 @@ pio run -t upload       # build and flash over USB
 pio device monitor      # serial logs at 115200 baud
 ```
 
-The built firmware is `.pio/build/esp32dev/firmware.bin`. Upload it from the web admin (Sistema tab) for later updates.
+The built firmware is `.pio/build/esp32dev/firmware.bin`. Upload it from the web page (Sistema tab) for later updates.
 
 ### Arduino IDE
 
@@ -28,7 +28,7 @@ The built firmware is `.pio/build/esp32dev/firmware.bin`. Upload it from the web
    `WiFi`, `WebServer`, `ESPmDNS`, `DNSServer`, `Preferences`, `Update` and `Wire` come with the ESP32 core.
 3. Create a folder named `doorlock`, copy every file from `src/` into it, and rename `main.cpp` to `doorlock.ino`. The `.ino` file must have the same name as its folder.
 4. Select **Tools > Board > ESP32 Dev Module** and **Tools > Partition Scheme > Minimal SPIFFS (1.9MB APP with OTA)**.
-5. Upload. For a later web update, use **Sketch > Export Compiled Binary** and upload the `.bin` file from the web admin.
+5. Upload. For a later web update, use **Sketch > Export Compiled Binary** and upload the `.bin` file from the web page.
 
 ### Partition table
 
@@ -48,19 +48,20 @@ Everything you would normally change is in `src/config.h`.
 | `LED_BRIGHTNESS` | 80 | 0 to 255 |
 | `LED_KEY_FLASH_MS`, `LED_BLINK_MS`, `LED_BLINK_COUNT` | 250, 250, 3 | LED timings |
 | `GREETING_MS`, `RESULT_MS`, `NOTICE_MS` | 1500, 3000, 4000 | How long each screen stays |
+| `MENU_CODE` | `"2205"` | Code typed before `D` to open the menu |
+| `MENU_TIMEOUT_MS` | 30000 | The menu closes after this much inactivity |
+| `MENU_INFO_MS`, `HOTSPOT_INFO_MS` | 10000, 20000 | How long the IP and hotspot screens stay |
 | `PIN_ENTRY_TIMEOUT_MS` | 20000 | A half-typed PIN is cleared after this much inactivity |
 | `CHALLENGE_TIMEOUT_MS` | 60000 | An unanswered challenge returns to the prompt |
 | `ANSWER_MAX_LEN` | 6 | Digits allowed in a challenge answer |
 | `MAX_USERS`, `USER_NAME_LEN`, `USER_PIN_LEN` | 20, 16, 8 | User list limits (see [Storage](#storage)) |
 | `WIFI_HOSTNAME` | `keypad` | mDNS name: `http://keypad.local/` |
 | `DEFAULT_WIFI_SSID`, `DEFAULT_WIFI_PASS` | empty | Optional first-boot WiFi credentials |
-| `DEFAULT_ADMIN_USER`, `DEFAULT_ADMIN_PASS` | `admin`, `admin` | First-boot web login |
-| `SETUP_AP_PREFIX`, `SETUP_AP_PASS` | `Teclado`, `teclado123` | Setup hotspot name prefix and password |
+| `SETUP_AP_PREFIX` | `Teclado` | Setup hotspot name prefix (the hotspot is open) |
 | `WIFI_RETRY_MS`, `WIFI_RETRY_WITH_AP_MS` | 15000, 30000 | Reconnect interval without and with the hotspot running |
-| `WIFI_AP_FALLBACK_MS` | 30000 | Offline time before the hotspot opens |
-| `WIFI_AP_LINGER_MS` | 60000 | The hotspot stays open this long after the device reconnects |
+| `WIFI_AP_LINGER_MS` | 60000 | The hotspot stays open this long after a network saved from it connects |
 
-The `DEFAULT_*` values only apply while nothing is stored in flash. After you save WiFi or admin settings from the web admin, the stored values win.
+The `DEFAULT_*` values only apply while nothing is stored in flash. After you save a WiFi network from the web page, the stored values win.
 
 ## Architecture
 
@@ -68,15 +69,15 @@ Each module owns one piece of hardware or one concern. `main.cpp` creates them, 
 
 | Module | Responsibility |
 |---|---|
-| `main.cpp` | Creates all objects, reads the keypad, routes key presses, reacts to WiFi events, hooks OTA progress to the LCD |
-| `game` | Keypad state machine and everything shown on the LCD during play |
+| `main.cpp` | Creates all objects, reads the keypad, runs menu actions, reacts to WiFi events, hooks OTA progress to the LCD |
+| `game` | Keypad state machine, the menu, and everything shown on the LCD |
 | `display` | LCD wrapper. Rewrites a line only when its text changes, which avoids flicker |
 | `led` | Non-blocking LED effects: key flash and N blinks |
 | `users` | User list in NVS, validation, add, edit and remove |
-| `settings` | WiFi credentials and admin login in NVS |
-| `wifi_service` | Station connection, retries, setup hotspot, captive-portal DNS, mDNS |
-| `web_ui` | HTTP routes, JSON API, basic auth, OTA upload, delayed reboot |
-| `web_page.h` | The single-page admin UI, stored in flash |
+| `settings` | WiFi credentials in NVS |
+| `wifi_service` | Station connection, endless retries, on-demand setup hotspot, captive-portal DNS, mDNS |
+| `web_ui` | HTTP routes, JSON API, OTA upload, delayed reboot |
+| `web_page.h` | The single-page web UI, stored in flash |
 
 Every `loop()` pass runs, in order: `wifi.update()`, `web.update()`, `led.update()`, `game.update()`, the WiFi event handler, then one keypad read. Nothing in the loop blocks. Timers compare `millis()` with `timeReached()` from `util.h`, which stays correct when `millis()` wraps around after about 49 days.
 
@@ -94,7 +95,11 @@ stateDiagram-v2
     Challenge --> Result: # with an answer (green or red blinks)
     Challenge --> EnterPin: no key for 60 s
     Result --> EnterPin: after 3 s or any key
-    EnterPin --> Notice: key A, or a WiFi event while idle
+    EnterPin --> Menu: 2205 then D
+    Menu --> EnterPin: * or 30 s without a key
+    Menu --> Notice: 1+D (hotspot) or 2+D (IP)
+    Menu --> Busy: 3+D (restart)
+    EnterPin --> Notice: WiFi connected while idle
     Notice --> EnterPin: after the timeout or any key
     EnterPin --> Busy: firmware upload starts
     Busy --> EnterPin: upload failed
@@ -106,10 +111,11 @@ stateDiagram-v2
 | `Greeting` | `Bem-vindo(a):` | user name | ignored |
 | `Challenge` | `256 + 139 = ?` | `> ` and the typed answer | digits, `#`, `*` |
 | `Result` | `Correto! :)` / `Errado! :(` / `ERRO` | name / `Era: <answer>` / `Senha invalida` | any key returns to the prompt |
-| `Notice` | `IP:` or the hotspot name | the IP address | any key dismisses it; a digit also starts a PIN |
-| `Busy` | `Atualizando...` | `Nao desligue!` | ignored |
+| `Menu` | `1Hotspot 2IP  >` and the chosen digit | `3Reiniciar *Sair` | `1` to `3` choose, `D` confirms, `*` exits |
+| `Notice` | `IP:` / `Sem WiFi` / the hotspot name | the IP / `Conectando...` or `nao configurado` / `192.168.4.1` | any key dismisses it; a digit also starts a PIN |
+| `Busy` | `Atualizando...` or `Reiniciando...` | `Nao desligue!` or empty | ignored |
 
-The user name is copied when the PIN is accepted, so the result screen still works if someone edits or removes that user from the web admin in the meantime.
+The user name is copied when the PIN is accepted, so the result screen still works if someone edits or removes that user from the web page in the meantime.
 
 ### Challenges
 
@@ -132,12 +138,12 @@ A key press does not interrupt a running green or red blink. (In v1 it did.) Yel
 
 ## WiFi behavior
 
-1. **At boot,** if a network is stored, the device connects to it in the background. The keypad works right away. If no network is stored, the setup hotspot opens immediately.
+1. **At boot,** if a network is stored, the device connects to it in the background. The keypad works right away. If no network is stored, the LCD shows `Sem WiFi / nao configurado` for a few seconds and the device waits for you to open the hotspot from the menu.
 2. **When connected,** mDNS announces `keypad.local` and the LCD shows the IP for a few seconds (only if nobody is typing).
-3. **When the network is unreachable or lost,** the device retries every 15 s. After 30 s offline it also opens the setup hotspot `Teclado-XXXX` (`XXXX` comes from the chip's MAC address). With the hotspot open, retries happen every 30 s, because each retry briefly disturbs hotspot clients.
-4. **In hotspot mode,** a DNS server answers every name with `192.168.4.1`, so phones and tablets open the setup page by themselves (captive portal).
-5. **After reconnecting,** the hotspot stays open for 60 s more, then closes.
-6. **Saving a new network** in the web admin stores it and reconnects right away.
+3. **When the network is unreachable or lost,** the device retries every 15 s, forever. It never opens the hotspot by itself.
+4. **The setup hotspot** starts only from keypad menu option 1. It is an open network named `Teclado-XXXX` (`XXXX` comes from the chip's MAC address). A DNS server answers every name with `192.168.4.1`, so phones and tablets open the setup page by themselves (captive portal). While the hotspot is open, retries happen every 30 s instead, because each retry briefly disturbs hotspot clients.
+5. **Saving a new network** on the web page stores it and reconnects right away.
+6. **The hotspot closes** 60 s after a network saved while it was open connects, or when the device restarts. Otherwise it stays open.
 
 ## Storage
 
@@ -148,7 +154,6 @@ Data lives in the ESP32 NVS flash partition through the `Preferences` library.
 | `keypad` | `count` | `uint8` | Number of users |
 | `keypad` | `users` | blob, 520 bytes | `User users[20]`, each `{ char name[17]; char pin[9]; }` |
 | `settings` | `wifi_ssid`, `wifi_pass` | string | WiFi credentials |
-| `settings` | `admin_user`, `admin_pass` | string | Web login |
 
 - The `keypad` namespace, its keys and the `User` layout are the same as in v1, so an upgrade keeps existing users.
 - The user list is written only when it changes (add, edit or remove), never in a loop or on key presses.
@@ -167,7 +172,6 @@ These rules keep the firmware reliable. They also give an AI assistant or a new 
 - LCD text must be ASCII and at most 16 characters per line. `Display::show()` cuts longer text.
 - Change users only through `UserStore`, which validates input and saves. Never write to flash in a loop or on every key press.
 - Everything sent to the browser goes through `jsonString()`, and the page escapes it again with `esc()` before inserting HTML.
-- Every new web route must call `authorize()` first.
 - Keep `<Keypad.h>` as the last include in `main.cpp`. It defines generic macros such as `OPEN` and `CLOSED`.
 
 **Conventions**
@@ -178,16 +182,19 @@ These rules keep the firmware reliable. They also give an AI assistant or a new 
 
 **Manual test checklist**
 
-1. Fresh device: the hotspot opens, the LCD shows its name and IP, and the setup page opens after joining it.
-2. Configure WiFi from the Rede tab: the device connects, the LCD shows the IP, `http://keypad.local/` works, and the hotspot closes after about a minute.
-3. `1234 #` shows "Bem-vindo(a): Daniel" with 3 green blinks, then a challenge.
-4. A correct answer shows "Correto! :)" with green blinks. A wrong one shows "Errado! :(" and the right answer, with red blinks.
-5. `9999 #` shows "ERRO / Senha invalida" with 3 red blinks and returns to the prompt after 3 s.
-6. Pressing keys during a blink does not interrupt it.
-7. Web UI: add, edit and remove users; a duplicate PIN is rejected; changes survive a reboot.
-8. Turn the router off: after 30 s the hotspot opens. Turn it back on: the device reconnects by itself.
-9. Upload a new `firmware.bin`: the progress bar fills, the LCD shows "Atualizando...", and the device reboots into the new version (check the version in the Sistema tab).
-10. Any key lights the LED yellow for about 250 ms. Key `A` shows the IP.
+1. Fresh device: the LCD briefly shows `Sem WiFi / nao configurado`. No hotspot appears.
+2. `2205 D` opens the menu. `*` closes it, and so do 30 s without a key. `1234 D` does nothing.
+3. Menu `1 D`: the LCD shows the hotspot name and `192.168.4.1`. Joining the open hotspot opens the setup page.
+4. Configure WiFi from the Rede tab: the device connects, the LCD shows the IP, `http://keypad.local/` works, and the hotspot closes after about a minute.
+5. Menu `2 D` shows the IP. Menu `3 D` shows `Reiniciando...` and restarts.
+6. `1234 #` shows "Bem-vindo(a): Daniel" with 3 green blinks, then a challenge.
+7. A correct answer shows "Correto! :)" with green blinks. A wrong one shows "Errado! :(" and the right answer, with red blinks.
+8. `9999 #` shows "ERRO / Senha invalida" with 3 red blinks and returns to the prompt after 3 s.
+9. Pressing keys during a blink does not interrupt it.
+10. Web UI: add, edit and remove users; a duplicate PIN is rejected; changes survive a reboot.
+11. Turn the router off for a few minutes: no hotspot appears. Turn it back on: the device reconnects by itself.
+12. Upload a new `firmware.bin`: the progress bar fills, the LCD shows "Atualizando...", and the device reboots into the new version (check the version in the Sistema tab).
+13. Any key lights the LED yellow for about 250 ms.
 
 **Definition of done for a change**
 
@@ -197,17 +204,16 @@ These rules keep the firmware reliable. They also give an AI assistant or a new 
 
 ## Known limitations
 
-1. **Weak security by design.** PINs are stored and shown in plain text. The web admin uses HTTP basic auth over plain HTTP, and the hotspot password is public in this repository. Use it only on a trusted home network.
+1. **No security by design.** PINs are stored and shown in plain text. The web page has no login and the setup hotspot is open, so anyone on your network (or near the device while the hotspot is on) can change users, WiFi and firmware. Use it only on a trusted home network.
 2. **No limit on PIN attempts** at the keypad.
-3. **No CSRF protection.** The API uses POST and basic auth only.
-4. **User edits use list positions.** If two people edit the list at the same time, one may act on a stale position. Reload the page before editing if someone else might be making changes.
-5. **The keypad is unresponsive during a firmware upload** (a few seconds).
-6. **Names are ASCII only,** because the LCD cannot show accents.
+3. **User edits use list positions.** If two people edit the list at the same time, one may act on a stale position. Reload the page before editing if someone else might be making changes.
+4. **The keypad is unresponsive during a firmware upload** (a few seconds).
+5. **Names are ASCII only,** because the LCD cannot show accents.
 
 ## Roadmap ideas
 
 - Lock the keypad for a while after several wrong PINs, with LCD and LED feedback.
-- A score per user and a ranking in the web admin.
+- A score per user and a ranking on the web page.
 - Challenge difficulty levels, chosen with keys `B` to `D`, and a time limit to answer.
 - Store PIN hashes (SHA-256 with salt) instead of plain text.
 - MQTT events for Home Assistant (login success or failure, challenge results).

@@ -21,11 +21,10 @@ void WifiService::begin() {
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
 
-  disconnectedSinceMs_ = millis();
   if (settings_.hasWifi()) {
     connectSta();
   } else {
-    startAp();
+    Serial.println("[wifi] no network configured");
   }
 }
 
@@ -35,7 +34,7 @@ void WifiService::update() {
   const uint32_t now = millis();
   if (reconnectPending_) {
     reconnectPending_ = false;
-    disconnectedSinceMs_ = now;
+    if (apActive_) closeApOnConnect_ = true;
     connectSta();
   }
 
@@ -45,16 +44,16 @@ void WifiService::update() {
     Serial.printf("[wifi] connected to '%s', IP %s\n", WiFi.SSID().c_str(), ip().c_str());
     startMdns();
     push(Event::Connected);
-    if (apActive_) {
+    if (apActive_ && closeApOnConnect_) {
       // Keep the hotspot a little longer so the setup page can show the result.
+      closeApOnConnect_ = false;
       apStopScheduled_ = true;
       apStopAtMs_ = now + WIFI_AP_LINGER_MS;
     }
   } else if (!isConnected && wasConnected_) {
     wasConnected_ = false;
-    disconnectedSinceMs_ = now;
     lastAttemptMs_ = now;
-    Serial.println("[wifi] connection lost");
+    Serial.println("[wifi] connection lost, retrying");
     push(Event::Disconnected);
   }
 
@@ -63,25 +62,32 @@ void WifiService::update() {
     return;
   }
 
-  apStopScheduled_ = false;
-  if (!settings_.hasWifi()) {
-    if (!apActive_) startAp();
-    return;
-  }
-  if (!apActive_ && timeReached(disconnectedSinceMs_ + WIFI_AP_FALLBACK_MS)) startAp();
-  if (timeReached(lastAttemptMs_ + (apActive_ ? WIFI_RETRY_WITH_AP_MS : WIFI_RETRY_MS))) {
+  if (settings_.hasWifi() &&
+      timeReached(lastAttemptMs_ + (apActive_ ? WIFI_RETRY_WITH_AP_MS : WIFI_RETRY_MS))) {
     connectSta();
   }
 }
 
 WifiService::Event WifiService::takeEvent() {
-  for (uint8_t bit = 1; bit <= static_cast<uint8_t>(Event::ApStarted); bit <<= 1) {
+  for (uint8_t bit = 1; bit <= static_cast<uint8_t>(Event::Disconnected); bit <<= 1) {
     if (pendingEvents_ & bit) {
       pendingEvents_ &= ~bit;
       return static_cast<Event>(bit);
     }
   }
   return Event::None;
+}
+
+void WifiService::startHotspot() {
+  if (apActive_) return;
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.softAP(apSsid_.c_str());  // open network
+  dns_.setErrorReplyCode(DNSReplyCode::NoError);
+  dns_.start(53, "*", WiFi.softAPIP());
+  apActive_ = true;
+  closeApOnConnect_ = false;
+  apStopScheduled_ = false;
+  Serial.printf("[wifi] setup hotspot '%s' started, IP %s\n", apSsid_.c_str(), apIp().c_str());
 }
 
 bool WifiService::connected() const {
@@ -105,16 +111,6 @@ void WifiService::connectSta() {
   Serial.printf("[wifi] connecting to '%s'\n", settings_.wifiSsid().c_str());
   WiFi.disconnect();
   WiFi.begin(settings_.wifiSsid().c_str(), settings_.wifiPass().c_str());
-}
-
-void WifiService::startAp() {
-  WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP(apSsid_.c_str(), SETUP_AP_PASS);
-  dns_.setErrorReplyCode(DNSReplyCode::NoError);
-  dns_.start(53, "*", WiFi.softAPIP());
-  apActive_ = true;
-  Serial.printf("[wifi] setup hotspot '%s' started, IP %s\n", apSsid_.c_str(), apIp().c_str());
-  push(Event::ApStarted);
 }
 
 void WifiService::stopAp() {

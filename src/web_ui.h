@@ -10,7 +10,7 @@
 class Settings;
 class WifiService;
 
-// Admin web UI and JSON API. Every route requires HTTP basic auth.
+// Web UI and JSON API. No login: this is a toy on a home network.
 class WebUi {
  public:
   using OtaStartHandler = std::function<void()>;
@@ -25,7 +25,6 @@ class WebUi {
   void onOtaEnd(OtaEndHandler handler) { otaEnd_ = handler; }
 
  private:
-  bool authorize();
   void sendJson(int code, const String& body);
   void sendOk();
   void sendError(int code, const String& message);
@@ -41,7 +40,6 @@ class WebUi {
   void handleWifiScanStart();
   void handleWifiScanResult();
   void handleWifiSave();
-  void handleAdminSave();
   void handleReboot();
   void handleOtaUpload();
   void handleOtaDone();

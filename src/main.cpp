@@ -7,6 +7,7 @@
 #include "led.h"
 #include "settings.h"
 #include "users.h"
+#include "util.h"
 #include "web_ui.h"
 #include "wifi_service.h"
 
@@ -34,29 +35,40 @@ WifiService wifi(settings);
 Game game(display, led, users);
 WebUi web(users, settings, wifi);
 
+bool restartPending = false;
+uint32_t restartAtMs = 0;
+
 void showNetworkInfo(uint32_t durationMs) {
   if (wifi.connected()) {
     game.showNotice("IP:", wifi.ip(), durationMs);
-  } else if (wifi.apActive()) {
-    game.showNotice(wifi.apSsid(), String("IP ") + wifi.apIp(), durationMs);
+  } else if (!settings.hasWifi()) {
+    game.showNotice("Sem WiFi", "nao configurado", durationMs);
   } else {
     game.showNotice("Sem WiFi", "Conectando...", durationMs);
+  }
+}
+
+void handleMenuAction(MenuAction action) {
+  switch (action) {
+    case MenuAction::Hotspot:
+      wifi.startHotspot();
+      game.showNotice(wifi.apSsid(), wifi.apIp(), HOTSPOT_INFO_MS);
+      break;
+    case MenuAction::ShowIp:
+      showNetworkInfo(MENU_INFO_MS);
+      break;
+    case MenuAction::Restart:
+      game.showBusy("Reiniciando...", "");
+      restartPending = true;
+      restartAtMs = millis() + 1000;
+      break;
   }
 }
 
 void handleWifiEvents() {
   WifiService::Event event;
   while ((event = wifi.takeEvent()) != WifiService::Event::None) {
-    switch (event) {
-      case WifiService::Event::Connected:
-        if (game.isIdle()) showNetworkInfo(NOTICE_MS);
-        break;
-      case WifiService::Event::ApStarted:
-        if (game.isIdle()) showNetworkInfo(NOTICE_MS * 2);
-        break;
-      default:
-        break;
-    }
+    if (event == WifiService::Event::Connected && game.isIdle()) showNetworkInfo(NOTICE_MS);
   }
 }
 
@@ -89,7 +101,9 @@ void setup() {
   });
   web.begin();
 
+  game.onMenuAction(handleMenuAction);
   game.begin();
+  if (!settings.hasWifi()) showNetworkInfo(NOTICE_MS);
 }
 
 void loop() {
@@ -99,13 +113,11 @@ void loop() {
   game.update();
   handleWifiEvents();
 
+  if (restartPending && timeReached(restartAtMs)) ESP.restart();
+
   const char key = keypad.getKey();
   if (key == NO_KEY) return;
 
   led.keyFlash();
-  if (key == 'A' && game.isIdle()) {
-    showNetworkInfo(NOTICE_MS);
-    return;
-  }
   game.handleKey(key);
 }

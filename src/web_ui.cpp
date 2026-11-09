@@ -11,8 +11,6 @@
 
 namespace {
 
-constexpr const char* AUTH_REALM = "Teclado";
-
 String jsonString(const String& value) {
   String out;
   out.reserve(value.length() + 2);
@@ -78,7 +76,6 @@ void WebUi::begin() {
   server_.on("/api/wifi/scan", HTTP_POST, [this]() { handleWifiScanStart(); });
   server_.on("/api/wifi/scan", HTTP_GET, [this]() { handleWifiScanResult(); });
   server_.on("/api/wifi", HTTP_POST, [this]() { handleWifiSave(); });
-  server_.on("/api/admin", HTTP_POST, [this]() { handleAdminSave(); });
   server_.on("/api/reboot", HTTP_POST, [this]() { handleReboot(); });
   server_.on("/api/update", HTTP_POST, [this]() { handleOtaDone(); }, [this]() { handleOtaUpload(); });
   server_.onNotFound([this]() { handleNotFound(); });
@@ -92,12 +89,6 @@ void WebUi::update() {
     Serial.println("[web] restarting");
     ESP.restart();
   }
-}
-
-bool WebUi::authorize() {
-  if (server_.authenticate(settings_.adminUser().c_str(), settings_.adminPass().c_str())) return true;
-  server_.requestAuthentication(BASIC_AUTH, AUTH_REALM);
-  return false;
 }
 
 void WebUi::sendJson(int code, const String& body) {
@@ -127,14 +118,11 @@ void WebUi::scheduleReboot(uint32_t delayMs) {
 }
 
 void WebUi::handleIndex() {
-  if (!authorize()) return;
   server_.sendHeader("Cache-Control", "no-cache");
   server_.send_P(200, "text/html; charset=utf-8", INDEX_HTML);
 }
 
 void WebUi::handleStatus() {
-  if (!authorize()) return;
-
   const bool connected = wifi_.connected();
   String json;
   json.reserve(512);
@@ -144,10 +132,6 @@ void WebUi::handleStatus() {
   json += String(ESP.getFreeHeap());
   json += ",\"hostname\":";
   json += jsonString(WIFI_HOSTNAME);
-  json += ",\"adminUser\":";
-  json += jsonString(settings_.adminUser());
-  json += ",\"defaultPassword\":";
-  json += jsonBool(settings_.usingDefaultAdminPass());
   json += ",\"users\":{\"count\":";
   json += String(users_.count());
   json += ",\"max\":";
@@ -173,8 +157,6 @@ void WebUi::handleStatus() {
 }
 
 void WebUi::handleUsersList() {
-  if (!authorize()) return;
-
   String json;
   json.reserve(64 + users_.count() * 48);
   json += "{\"max\":";
@@ -194,12 +176,10 @@ void WebUi::handleUsersList() {
 }
 
 void WebUi::handleUserAdd() {
-  if (!authorize()) return;
   sendUserResult(users_.add(server_.arg("name"), server_.arg("pin")));
 }
 
 void WebUi::handleUserUpdate() {
-  if (!authorize()) return;
   int index;
   if (!parseIndex(server_.arg("index"), index)) {
     sendUserResult(UserResult::NotFound);
@@ -209,7 +189,6 @@ void WebUi::handleUserUpdate() {
 }
 
 void WebUi::handleUserDelete() {
-  if (!authorize()) return;
   int index;
   if (!parseIndex(server_.arg("index"), index)) {
     sendUserResult(UserResult::NotFound);
@@ -219,7 +198,6 @@ void WebUi::handleUserDelete() {
 }
 
 void WebUi::handleWifiScanStart() {
-  if (!authorize()) return;
   WiFi.scanDelete();
   if (WiFi.scanNetworks(true) == WIFI_SCAN_FAILED) {
     sendError(503, "Não foi possível procurar redes agora. Tente novamente.");
@@ -229,8 +207,6 @@ void WebUi::handleWifiScanStart() {
 }
 
 void WebUi::handleWifiScanResult() {
-  if (!authorize()) return;
-
   const int count = WiFi.scanComplete();
   if (count == WIFI_SCAN_RUNNING) {
     sendJson(200, "{\"scanning\":true}");
@@ -261,7 +237,6 @@ void WebUi::handleWifiScanResult() {
 }
 
 void WebUi::handleWifiSave() {
-  if (!authorize()) return;
   const char* error = settings_.setWifi(server_.arg("ssid"), server_.arg("pass"));
   if (error) {
     sendError(400, error);
@@ -271,18 +246,7 @@ void WebUi::handleWifiSave() {
   wifi_.reconnect();
 }
 
-void WebUi::handleAdminSave() {
-  if (!authorize()) return;
-  const char* error = settings_.setAdmin(server_.arg("user"), server_.arg("pass"));
-  if (error) {
-    sendError(400, error);
-    return;
-  }
-  sendOk();
-}
-
 void WebUi::handleReboot() {
-  if (!authorize()) return;
   sendOk();
   scheduleReboot(1000);
 }
@@ -294,8 +258,7 @@ void WebUi::handleOtaUpload() {
   switch (upload.status) {
     case UPLOAD_FILE_START:
       otaError_ = "";
-      otaStarted_ = server_.authenticate(settings_.adminUser().c_str(), settings_.adminPass().c_str());
-      if (!otaStarted_) return;
+      otaStarted_ = true;
       Serial.printf("[ota] receiving %s\n", upload.filename.c_str());
       if (otaStart_) otaStart_();
       if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) otaError_ = Update.errorString();
@@ -323,8 +286,6 @@ void WebUi::handleOtaUpload() {
 }
 
 void WebUi::handleOtaDone() {
-  if (!authorize()) return;
-
   const bool started = otaStarted_;
   const bool ok = started && otaError_.length() == 0;
   otaStarted_ = false;

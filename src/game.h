@@ -2,15 +2,26 @@
 
 #include <Arduino.h>
 
+#include <functional>
+
 #include "config.h"
 #include "display.h"
 #include "led.h"
 #include "users.h"
 
-// Keypad state machine: PIN entry -> greeting -> math challenge -> result.
+// Values match the menu digits shown on the LCD.
+enum class MenuAction : uint8_t { Hotspot = 1, ShowIp = 2, Restart = 3 };
+
+// Keypad state machine: PIN entry -> greeting -> math challenge -> result,
+// plus a service menu opened with MENU_CODE followed by D.
 class Game {
  public:
+  using MenuHandler = std::function<void(MenuAction)>;
+
   Game(Display& display, StatusLed& led, UserStore& users);
+
+  // Called after the menu closes, so the handler may show a notice.
+  void onMenuAction(MenuHandler handler) { menuHandler_ = handler; }
 
   void begin();
   void update();
@@ -27,7 +38,7 @@ class Game {
   void endBusy();
 
  private:
-  enum class State : uint8_t { EnterPin, Greeting, Challenge, Result, Notice, Busy };
+  enum class State : uint8_t { EnterPin, Greeting, Challenge, Result, Notice, Busy, Menu };
 
   void resetToPrompt();
   void renderPrompt();
@@ -35,17 +46,22 @@ class Game {
   void submitPin();
   void startChallenge();
   void submitAnswer();
+  void openMenu();
+  void renderMenu();
+  void runMenuChoice();
   void enterTimedState(State state, uint32_t durationMs);
   bool appendDigit(char key, uint8_t maxLength);
 
   Display& display_;
   StatusLed& led_;
   UserStore& users_;
+  MenuHandler menuHandler_;
 
   State state_ = State::EnterPin;
   String input_;
   String question_;
   long answer_ = 0;
+  char menuChoice_ = 0;  // '1'..'3' once a digit is typed in the menu
   // Copied at login so the result screen survives a user being edited or
   // removed from the web UI mid-session.
   char userName_[USER_NAME_LEN + 1] = {};

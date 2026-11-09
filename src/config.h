@@ -46,9 +46,16 @@ constexpr uint8_t LED_BLINK_COUNT = 3;
 constexpr uint32_t GREETING_MS = 1500;
 constexpr uint32_t RESULT_MS = 3000;
 constexpr uint32_t NOTICE_MS = 4000;
+constexpr uint32_t MENU_INFO_MS = 10000;     // IP screen from the menu
+constexpr uint32_t HOTSPOT_INFO_MS = 20000;  // hotspot screen from the menu
+constexpr uint32_t MENU_TIMEOUT_MS = 30000;
 constexpr uint32_t PIN_ENTRY_TIMEOUT_MS = 20000;
 constexpr uint32_t CHALLENGE_TIMEOUT_MS = 60000;
 constexpr uint8_t ANSWER_MAX_LEN = 6;
+
+// Typing this code and then D opens the keypad menu. Must be digits only and
+// at most USER_PIN_LEN long. A user with the same PIN still logs in with #.
+constexpr const char* MENU_CODE = "2205";
 
 // ---------------------------------------------------------------------------
 // Users. Changing any of these changes the stored blob size: the stored list
@@ -59,19 +66,16 @@ constexpr uint8_t USER_NAME_LEN = 16;
 constexpr uint8_t USER_PIN_LEN = 8;
 
 // ---------------------------------------------------------------------------
-// Network and web admin. WiFi credentials and the admin login are normally
-// set from the web UI and stored in flash; these are only first-boot defaults.
+// Network. WiFi credentials are normally set from the web UI and stored in
+// flash; these are only first-boot defaults.
 // ---------------------------------------------------------------------------
 constexpr const char* WIFI_HOSTNAME = "keypad";  // http://keypad.local/
 constexpr const char* DEFAULT_WIFI_SSID = "";
 constexpr const char* DEFAULT_WIFI_PASS = "";
-constexpr const char* DEFAULT_ADMIN_USER = "admin";
-constexpr const char* DEFAULT_ADMIN_PASS = "admin";
 
+// Open setup hotspot (no password), started only from the keypad menu.
 constexpr const char* SETUP_AP_PREFIX = "Teclado";  // hotspot name: Teclado-XXXX
-constexpr const char* SETUP_AP_PASS = "teclado123";  // WPA2 needs 8+ characters
 
 constexpr uint32_t WIFI_RETRY_MS = 15000;          // retry interval without hotspot
 constexpr uint32_t WIFI_RETRY_WITH_AP_MS = 30000;  // retries disturb hotspot clients
-constexpr uint32_t WIFI_AP_FALLBACK_MS = 30000;    // offline time before the hotspot starts
-constexpr uint32_t WIFI_AP_LINGER_MS = 60000;      // hotspot stays up after STA connects
+constexpr uint32_t WIFI_AP_LINGER_MS = 60000;      // hotspot stays up after a newly saved network connects
