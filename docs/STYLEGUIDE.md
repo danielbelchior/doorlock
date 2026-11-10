@@ -5,8 +5,8 @@ Match the code around you. These rules describe what the code base already does.
 ## Languages
 
 - Code, identifiers, comments, logs and documentation: **English**.
-- Text people see on the LCD and the web page, and API error messages: **Portuguese (pt-BR)**.
-- LCD text: ASCII only, no accents (`Senha invalida`, `Nao desligue!`), at most 16 characters per line.
+- Text people see on the display and the web page, and API error messages: **Portuguese (pt-BR)**.
+- Display text: ASCII only, no accents, because the fonts have none (`Senha invalida`, `Nao desligue!`). Keep it short: the display shrinks long text to a smaller font and clips it if it still does not fit.
 - Web page and API messages: proper Portuguese with accents (`Usuário`, `inválido`).
 
 ## C++
@@ -65,7 +65,7 @@ Explain why, not what: hidden constraints, invariants, hardware quirks and worka
 
 - Markdown, sentence-case headings, short sentences, active voice.
 - Tables for reference data; numbered lists for procedures.
-- Inline code for file names, identifiers, keys, LCD text and values.
+- Inline code for file names, identifiers, keys, display text and values.
 - Use commas, parentheses or separate sentences instead of em dashes.
 - Keep facts in one place when possible and link to it; when a value is repeated (pins, timings, version), update every copy.
 - Diagrams: Mermaid in Markdown; wiring as hand-written SVG in `docs/`.

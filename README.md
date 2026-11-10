@@ -1,6 +1,6 @@
 # Doorlock: ESP32 PIN keypad with a math challenge
 
-An ESP32 project for fun. People type a PIN on a 4x4 keypad. If the PIN belongs to someone, the 16x2 LCD greets them by name and, if that person has the math challenge turned on, asks a quick math question (for example `256 + 139 = ?`). An RGBW LED and an active buzzer give color and sound feedback. You manage people and PINs from a web page that works on phones, tablets and computers.
+An ESP32 project for fun. People type a PIN on a 4x4 keypad. If the PIN belongs to someone, the OLED screen greets them by name and, if that person has the math challenge turned on, asks a quick math question (for example `256 + 139`). An RGBW LED and an active buzzer give color and sound feedback. You manage people and PINs from a web page that works on phones, tablets and computers.
 
 > This is a game, not a security device. PINs are stored in plain text, and the web page has no login: anyone on your network can open it. Do not use it to control a real lock.
 
@@ -13,12 +13,18 @@ An ESP32 project for fun. People type a PIN on a 4x4 keypad. If the PIN belongs 
 - **LED feedback:** yellow flash on every key, 3 green blinks for a correct PIN or answer, 3 red blinks for a wrong one.
 - **Sound feedback:** an MH-FMD active buzzer clicks on every key, beeps twice quickly for a correct PIN or answer, and gives one long beep for a wrong one. It is switched with `digitalWrite()`, so it needs no extra library.
 - **Web page (Portuguese UI), no login:** add, edit and remove users, and choose who does the math challenge; choose a WiFi network; install firmware updates; restart. The layout adapts to phones, tablets (two columns from 768 px) and desktops, with large touch targets and dark mode.
-- **Keypad menu:** type `2205` then `D` to open a menu on the LCD: open the setup hotspot, show the IP address, or restart.
+- **Keypad menu:** type `2205` then `D` to open a menu on the display: open the setup hotspot, show the IP address, or restart.
 - **WiFi setup hotspot:** an open `Teclado-XXXX` network with a captive portal. It starts only from the keypad menu, never by itself.
 - **Auto-reconnect:** if the WiFi is down or drops, the device keeps retrying the saved network forever.
 - **Web (OTA) firmware updates:** upload a `firmware.bin` from the browser, with a progress bar.
 - **Persistent storage:** users and WiFi credentials survive reboots and power loss. Users saved by firmware v1 are kept.
-- **Non-blocking firmware:** the keypad, LCD, LED, WiFi and web server all run together without `delay()` in the main loop.
+- **Non-blocking firmware:** the keypad, display, LED, WiFi and web server all run together without `delay()` in the main loop.
+- **OLED screen:** a 0.96" 128x64 display shows a header (title, clock, network icon), large text with check or X icons, a dot per typed PIN digit, and key hints at the bottom.
+- **Night screen-off:** from 00:00 to 08:00 the screen turns off when nobody uses the keypad for 30 s, which slows OLED burn-in. Any key wakes it. The clock comes from the internet (NTP), so this needs WiFi.
+
+![OLED screens](docs/oled-screens.svg)
+
+Every screen is described in [docs/DESIGN.md](docs/DESIGN.md#oled-screens).
 
 ## Wiring at a glance
 
@@ -28,8 +34,8 @@ An ESP32 project for fun. People type a PIN on a 4x4 keypad. If the PIN belongs 
 |---|---|---|
 | Keypad | 1, 2, 3, 4 (rows R1 to R4) | GPIO 19, 18, 5, 17 |
 | Keypad | 5, 6, 7, 8 (columns C1 to C4) | GPIO 16, 4, **25**, **26** |
-| LCD I2C | SDA / SCL | GPIO 21 / GPIO 22 |
-| LCD I2C | VCC / GND | 5V (VIN) / GND |
+| OLED I2C | SDA / SCL | GPIO 21 / GPIO 22 |
+| OLED I2C | VCC / GND | **3V3** / GND |
 | SK6812 LED | DIN (through 330 Ω) | GPIO 23 |
 | SK6812 LED | VCC / GND | 5V (VIN) / GND, with 100 nF across them |
 | MH-FMD buzzer | I/O | GPIO 33 |
@@ -43,16 +49,16 @@ The full parts list, the board pinout and the electrical notes are in [docs/hard
 2. **Build and flash over USB** (the first flash must be over USB):
    - PlatformIO: `pio run -t upload`, then `pio device monitor` to see the logs.
    - Arduino IDE: see [docs/firmware.md](docs/firmware.md#arduino-ide).
-3. **Open the setup hotspot.** On the keypad, type `2205`, press `D`, then press `1` and `D`. The LCD shows the hotspot name (`Teclado-XXXX`) and `192.168.4.1`.
+3. **Open the setup hotspot.** On the keypad, type `2205`, press `D`, then press `1` and `D`. The display shows the hotspot name (`Teclado-XXXX`) and `192.168.4.1`.
 4. **Join the hotspot** from a phone or tablet. It has no password. The setup page should open by itself. If it does not, browse to `http://192.168.4.1/`.
 5. **Choose your network** in the **Rede** tab: tap **Procurar redes**, pick your network, type its password and tap **Salvar e conectar**. Once the device connects, the hotspot closes after about a minute.
-6. **Open the web page on your network** at `http://keypad.local/`, or at the IP the LCD shows. To see the IP again, use menu option 2.
+6. **Open the web page on your network** at `http://keypad.local/`, or at the IP the display shows. To see the IP again, use menu option 2.
 
 ## Using the keypad
 
 | Key | Action |
 |---|---|
-| `0` to `9` | Type a digit (PIN digits show as `*`) |
+| `0` to `9` | Type a digit (PIN digits show as dots) |
 | `#` | Confirm |
 | `*` | Clear what you typed |
 | `D` | After `2205`: open the menu |
@@ -60,14 +66,15 @@ The full parts list, the board pinout and the electrical notes are in [docs/hard
 
 ### Menu
 
-Type `2205` and press `D`. The LCD shows:
+Type `2205` and press `D`. The display shows a numbered list:
 
 ```
-1Hotspot 2IP  >
-3Reiniciar *Sair
+1 Hotspot de config.
+2 Ver endereco IP
+3 Reiniciar
 ```
 
-Press the option's digit (it appears after `>`), then `D` to confirm. `*` leaves the menu. The menu also closes after 30 s without a key press.
+Press the option's digit (its row is highlighted), then `D` to confirm. `*` leaves the menu. The menu also closes after 30 s without a key press.
 
 | Option | Action |
 |---|---|
@@ -88,7 +95,7 @@ New here? Start with [docs/FUNDAMENTALS.md](docs/FUNDAMENTALS.md). AI assistants
 |---|---|
 | Big picture, concepts, documentation map | [docs/FUNDAMENTALS.md](docs/FUNDAMENTALS.md) |
 | Modules, main loop, data flow, storage | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| LCD screens, light and sound, web page design | [docs/DESIGN.md](docs/DESIGN.md) |
+| OLED screens, light and sound, web page design | [docs/DESIGN.md](docs/DESIGN.md) |
 | File-by-file guide | [docs/CODEBASE.md](docs/CODEBASE.md) |
 | Build, configure, extend | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
 | HTTP API reference | [docs/API.md](docs/API.md) |
@@ -113,7 +120,7 @@ src/
   main.cpp                Wiring of the modules, setup() and loop()
   config.h                Pins, timings, limits and defaults
   game.h/.cpp             Keypad state machine (PIN, greeting, challenge, result)
-  display.h/.cpp          16x2 LCD wrapper
+  display.h/.cpp          0.96" OLED drawing (U8g2)
   led.h/.cpp              Non-blocking SK6812 LED effects
   buzzer.h/.cpp           Non-blocking active buzzer beep patterns
   users.h/.cpp            User list stored in flash (NVS)
@@ -124,6 +131,12 @@ src/
   util.h                  Overflow-safe timing helper
 docs/                     Documentation and diagrams
 ```
+
+## Upgrading from firmware v2.1
+
+1. **Replace the LCD with a 0.96" SSD1306 OLED** (128x64, I2C). Wire SDA to GPIO 21, SCL to GPIO 22, VCC to **3V3** (not 5V) and GND to GND. Pin order varies between modules, so follow the labels. A 1.3" module uses an SH1106 controller: change the driver class in `src/display.h` (see [docs/hardware.md](docs/hardware.md#troubleshooting)).
+2. **Update from the browser** or over USB. The partition table did not change. Users and WiFi settings are kept.
+3. **Check the clock.** The header clock and the night screen-off use `TIME_ZONE` in `src/config.h` (Brasilia time by default). They need WiFi; without it the clock is hidden and the screen stays on.
 
 ## Upgrading from firmware v2.0
 

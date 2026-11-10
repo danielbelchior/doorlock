@@ -3,7 +3,7 @@
 ## Requirements
 
 - [PlatformIO](https://platformio.org/) (CLI or the VS Code extension). The first build downloads the `espressif32` platform, the toolchain and the three libraries in `platformio.ini`.
-- Or the Arduino IDE with the **esp32 by Espressif Systems** core (2.x or 3.x) and the libraries **Keypad**, **LiquidCrystal I2C** and **Adafruit NeoPixel**. Steps in [firmware.md](firmware.md#arduino-ide).
+- Or the Arduino IDE with the **esp32 by Espressif Systems** core (2.x or 3.x) and the libraries **Keypad**, **U8g2** and **Adafruit NeoPixel**. Steps in [firmware.md](firmware.md#arduino-ide).
 - A USB cable for the first flash. Later updates can go over WiFi ([DEPLOYMENT.md](DEPLOYMENT.md)).
 
 ## Everyday commands
@@ -36,6 +36,8 @@ All settings are `constexpr` values in `src/config.h`. See the table in [firmwar
 
 - Pins: keep away from GPIO 0, 2, 12, 15 (strapping), 6 to 11 (flash) and 34 to 39 (input only).
 - `BUZZER_ACTIVE_LOW`: `true` for the MH-FMD module.
+- `DISPLAY_I2C_ADDRESS`: `0x3C` for most OLED modules, `0x3D` for some. A 1.3" SH1106 module also needs another driver class in `src/display.h`.
+- `TIME_ZONE`: a POSIX TZ string for the header clock (`"<-03>3"` is Brasilia time). `DISPLAY_OFF_HOUR` / `DISPLAY_ON_HOUR` set the night screen-off; equal hours disable it.
 - `MENU_CODE`: digits only, at most 8.
 - `MAX_USERS`, `USER_NAME_LEN`, `USER_PIN_LEN`: changing them discards stored users on the next boot.
 - `DEFAULT_WIFI_SSID` / `DEFAULT_WIFI_PASS`: only used until a network is saved from the web page.
@@ -54,8 +56,8 @@ All settings are `constexpr` values in `src/config.h`. See the table in [firmwar
 
 1. Add it to `Game::State`.
 2. Handle its timeout in `Game::update()` and its keys in `Game::handleKey()`.
-3. Render with `display_.show()`; ASCII, at most 16 characters per line, Portuguese.
-4. Update the diagram in [ARCHITECTURE.md](ARCHITECTURE.md#keypad-state-machine), the table in [DESIGN.md](DESIGN.md#lcd-screens) and [firmware.md](firmware.md#keypad-state-machine).
+3. Build a `Screen` with `messageScreen()` (or fill a `Screen` for the `Pin` or `Menu` layout) and call `display_.show()`. Text in Portuguese, ASCII only; keep it short, because long text shrinks and is then clipped.
+4. Update the diagram in [ARCHITECTURE.md](ARCHITECTURE.md#keypad-state-machine), the table in [DESIGN.md](DESIGN.md#oled-screens) and [firmware.md](firmware.md#keypad-state-machine).
 
 ### Add a per-user option
 

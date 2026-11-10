@@ -14,7 +14,7 @@ Buttons and fields are at least 44 to 48 px tall for touch use. The page follows
 
 | Situation | Address |
 |---|---|
-| Device connected to your network | `http://keypad.local/`, or the IP shown on the LCD (keypad menu option 2) |
+| Device connected to your network | `http://keypad.local/`, or the IP shown on the keypad display (menu option 2) |
 | Setup hotspot (`Teclado-XXXX`, open, started with keypad menu option 1) | Opens by itself on most phones and tablets; otherwise `http://192.168.4.1/` |
 
 There is no login. Anyone on your network, or connected to the hotspot, can use the page.
@@ -33,7 +33,7 @@ There is no login. Anyone on your network, or connected to the hotspot, can use 
 ### Rede (network)
 
 - **Estado da conexão** shows whether the device is connected, the network name, IP, signal strength and, when it is open, the setup hotspot. A note reminds you that the hotspot is opened from the keypad menu.
-- **Configurar WiFi:** tap **Procurar redes** to scan, tap a network to fill in its name, type its password (leave it empty for an open network) and tap **Salvar e conectar**. The device saves the network and reconnects right away. If its IP changes, the page stops responding. Read the new IP on the LCD (keypad menu option 2). If you saved the network while connected to the hotspot, the hotspot closes about a minute after the device connects.
+- **Configurar WiFi:** tap **Procurar redes** to scan, tap a network to fill in its name, type its password (leave it empty for an open network) and tap **Salvar e conectar**. The device saves the network and reconnects right away. If its IP changes, the page stops responding. Read the new IP on the keypad display (menu option 2). If you saved the network while connected to the hotspot, the hotspot closes about a minute after the device connects.
 
 ### Sistema (system)
 
@@ -78,7 +78,7 @@ Example `/api/status` response:
 
 ```json
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "uptime": 93784,
   "heap": 182340,
   "hostname": "keypad",

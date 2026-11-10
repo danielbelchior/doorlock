@@ -8,8 +8,8 @@ src/
   main.cpp                Globals, setup(), loop(), menu and OTA glue
   config.h                Every pin, timing, limit and default
   util.h                  timeReached()
-  game.h / game.cpp       Game: keypad state machine and LCD text
-  display.h / .cpp        Display: flicker-free 16x2 LCD
+  game.h / game.cpp       Game: keypad state machine and screen content
+  display.h / .cpp        Display: 128x64 OLED drawing with U8g2
   led.h / led.cpp         StatusLed: SK6812 effects
   buzzer.h / .cpp         Buzzer: active buzzer patterns
   users.h / users.cpp     UserStore: users + challenge option in NVS
@@ -23,9 +23,13 @@ docs/                     Documentation and SVG diagrams
 ## `src/main.cpp`
 
 - Global objects, in dependency order: `keypad`, `display`, `led`, `buzzer`, `users`, `settings`, `wifi(settings)`, `game(display, led, buzzer, users)`, `web(users, settings, wifi)`.
-- `showNetworkInfo(ms)`: IP, "Sem WiFi / nao configurado" or "Sem WiFi / Conectando...".
+- `showNetworkInfo(ms)`: a `Rede WiFi` notice with the IP and `keypad.local`, `Sem WiFi` / `Nao configurado` (error icon), or `Sem WiFi` / `Conectando...`.
 - `handleMenuAction(MenuAction)`: hotspot, show IP, restart (sets `restartPending`).
 - `handleWifiEvents()`: shows the IP on `Event::Connected` if `game.isIdle()`.
+- `updateDisplayStatus()`: runs once a second from `loop()`. Sets the header network icon (`NetStatus::Online`, `Offline`, `Hotspot`) and, once NTP has synced, the `HH:MM` clock. Turns the panel off with `display.setAsleep()` during quiet hours while `game.restingFor(DISPLAY_NIGHT_WAKE_MS)`.
+- `inQuietHours(hour)`: true between `DISPLAY_OFF_HOUR` and `DISPLAY_ON_HOUR`, also when the window crosses midnight; always false when the two are equal.
+- `setup()` calls `configTzTime(TIME_ZONE, NTP_SERVER_1, NTP_SERVER_2)` after `wifi.begin()`. It does not call `Wire.begin()`: `display.begin()` starts I2C.
+- `loop()` wakes the display (`display.setAsleep(false)`) on every key before passing the key on.
 - `<Keypad.h>` is the last include because it defines macros such as `OPEN` and `CLOSED`.
 
 ## `src/config.h`
@@ -41,15 +45,39 @@ Compile-time configuration only (`constexpr` and `FIRMWARE_VERSION`). Full table
 | `begin()`, `update()`, `handleKey(char)` | Lifecycle; `update()` handles timeouts per state |
 | `onMenuAction(handler)` | Callback for menu options 1 to 3 (`MenuAction::Hotspot`, `ShowIp`, `Restart`) |
 | `isIdle()` | True at an empty PIN prompt or on a notice |
-| `showNotice(top, bottom, ms)` | Temporary message, any key dismisses |
-| `showBusy(top, bottom)`, `endBusy()` | Message that ignores keys until ended |
+| `restingFor(ms)` | True at an empty PIN prompt with no key for at least `ms`; used for the night screen-off |
+| `showNotice(screen, ms)` | Temporary `Screen`, any key dismisses |
+| `showBusy(screen)`, `endBusy()` | `Screen` that ignores keys until ended |
 | `submitPin()` | Finds the user, plays feedback, chooses `Greeting` (challenge on) or `Result` (off) |
 | `startChallenge()`, `submitAnswer()` | Builds a random question, checks the answer |
 | `userName_` | Copy of the name, so editing the user mid-session is safe |
 
 ## `src/display.*`
 
-`Display::show(top, bottom)` pads or cuts to 16 characters and writes a line only if it changed.
+`struct Screen` describes one screen:
+
+| Field | Meaning |
+|---|---|
+| `layout` | `Layout::Message` (text, detail, icon), `Layout::Pin` (one dot per character of `text`, 8 slots) or `Layout::Menu` (one row per `\n`-separated item of `text`) |
+| `icon` | `Icon::None`, `Icon::Ok` (check) or `Icon::Error` (X), drawn on the left of a Message screen |
+| `title` | Header text, top left |
+| `text`, `detail` | Main text and the smaller line below it |
+| `footer` | Key hints as `"<key> <label>"` items separated by `\|`, for example `"# Entrar\|* Apagar"` |
+| `selected` | Highlighted menu row, 1-based; 0 = none |
+
+`messageScreen(title, text, detail, icon)` builds a Message screen. `Screen::operator==` compares every field.
+
+`class Display`
+
+| Member | Purpose |
+|---|---|
+| `begin()` | Sets the I2C address (`DISPLAY_I2C_ADDRESS`) and clock, starts U8g2 (which starts `Wire` on GPIO 21 and 22), sets `DISPLAY_CONTRAST` |
+| `show(screen)` | Draws a screen; does nothing if it equals the current one |
+| `setNetwork(NetStatus)` | Header icon: filled bars (`Online`), outlined bars with a slash (`Offline`), `AP` badge (`Hotspot`) |
+| `setClock(hhmm)` | Header clock; an empty string hides it |
+| `setAsleep(bool)`, `asleep()` | Panel power save; the content is kept and shows again on wake |
+
+Every change redraws the full 1 KB frame buffer and sends it only when something visible changed. `fitFont()` picks the largest font that fits the width: `helvB14` to `helvB08` for the main text, `helvR10` or `helvR08` for the detail. The driver class is `U8G2_SSD1306_128X64_NONAME_F_HW_I2C`; a 1.3" SH1106 module needs `U8G2_SH1106_128X64_NONAME_F_HW_I2C`. Layout constants (header, footer and icon positions) are at the top of `display.cpp`.
 
 ## `src/led.*`
 

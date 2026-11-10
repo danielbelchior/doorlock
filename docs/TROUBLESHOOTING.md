@@ -6,8 +6,6 @@ Start with the serial log (`pio device monitor`, 115200 baud). Module prefixes a
 
 | Symptom | Cause and fix |
 |---|---|
-| LCD backlight on, no text | Turn the contrast potentiometer. If still blank, set `DISPLAY_I2C_ADDRESS` to `0x3F`. |
-| LCD completely dark | Check 5V, GND, SDA (21), SCL (22). |
 | Keys give wrong digits | Keypad connector reversed, or rows and columns swapped. Pin 1 is usually on the left. |
 | A group of keys is dead | One loose row or column wire; the pattern of dead keys points to it. |
 | Board does not boot or flash with the keypad connected | A wire is on a strapping pin (0, 2, 12, 15). Use the pins in `src/config.h`. |
@@ -19,6 +17,18 @@ Start with the serial log (`pio device monitor`, 115200 baud). Module prefixes a
 | Buzzer crackles instead of beeping | It is being driven with PWM or `tone()`. An active buzzer needs plain on/off. |
 | WROVER board misbehaves on keypad R4 / C1 | GPIO 16 and 17 are used by PSRAM; move them (for example to 27 and 32). |
 
+## Display
+
+| Symptom | Cause and fix |
+|---|---|
+| OLED stays blank | Check 3V3, GND, SDA (21) and SCL (22); module pin order varies, so follow the labels. If the wiring is right, set `DISPLAY_I2C_ADDRESS` to `0x3D`. |
+| Garbled or shifted image, with a column of noise at one edge | A 1.3" module with an SH1106 controller. Change the driver class in `src/display.h` to `U8G2_SH1106_128X64_NONAME_F_HW_I2C`. |
+| Image upside down | Set `DISPLAY_ROTATE_180` to `true`. |
+| Screen dark at night | Expected between `DISPLAY_OFF_HOUR` and `DISPLAY_ON_HOUR` (00:00 to 08:00) after 30 s idle. Press a key. Set both to the same hour to disable it. |
+| Clock shows the wrong time | `TIME_ZONE` does not match your location. It is a POSIX TZ string; `"<-03>3"` is UTC-3. |
+| No clock in the header | The time has not been synced yet: no WiFi, or NTP (`pool.ntp.org`, `time.google.com`) is unreachable. The clock appears once the time is synced. Until then the screen never turns off at night. |
+| Accented letters missing in names | The fonts are ASCII only; the web page rejects accented names. |
+
 ## Keypad behavior
 
 | Symptom | Cause and fix |
@@ -26,19 +36,19 @@ Start with the serial log (`pio device monitor`, 115200 baud). Module prefixes a
 | No math question after a correct PIN | The user has the challenge turned off. Check the tag in the **Usuários** tab. |
 | `2205 D` does nothing | Something was typed before; press `*` and try again. Only `MENU_CODE` followed by `D` opens the menu. |
 | Typed PIN disappears | 20 s without a key clears it (`PIN_ENTRY_TIMEOUT_MS`). |
-| Keypad frozen for a few seconds | A firmware upload is running (LCD shows `Atualizando...`). |
+| Keypad frozen for a few seconds | A firmware upload is running (the display shows `Atualizando...`). |
 | Default users came back | Flash was erased, or `MAX_USERS` / `USER_NAME_LEN` / `USER_PIN_LEN` changed. Log shows `stored list does not match this firmware`. |
 
 ## Network
 
 | Symptom | Cause and fix |
 |---|---|
-| `Sem WiFi / nao configurado` | No network saved. Open the hotspot (menu 1) and configure WiFi. |
-| `Sem WiFi / Conectando...` forever | Wrong password, out of range, or a 5 GHz-only network (the ESP32 is 2.4 GHz only). Re-enter it from the hotspot. |
+| `Sem WiFi` / `Nao configurado` | No network saved. Open the hotspot (menu 1) and configure WiFi. |
+| `Sem WiFi` / `Conectando...` forever | Wrong password, out of range, or a 5 GHz-only network (the ESP32 is 2.4 GHz only). Re-enter it from the hotspot. |
 | No hotspot appears | By design: it only starts from menu option 1. |
 | Captive page does not open | Browse to `http://192.168.4.1/`. Some phones need mobile data turned off. |
 | `keypad.local` does not resolve | mDNS not supported (Android, some Windows). Use the IP from menu option 2. |
-| Page stops responding after saving WiFi | The device moved to the new network and has a new IP. Read it on the LCD. |
+| Page stops responding after saving WiFi | The device moved to the new network and has a new IP. Read it on the display. |
 | Hotspot closes too early | It closes 60 s after a network saved from it connects (`WIFI_AP_LINGER_MS`). |
 
 ## Web page and API

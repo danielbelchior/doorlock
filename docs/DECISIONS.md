@@ -67,6 +67,7 @@ Short records of choices that shape the project. Each entry says what was decide
 - **Decision:** only Keypad, LiquidCrystal_I2C and Adafruit NeoPixel; everything else comes from the ESP32 core.
 - **Why:** fewer downloads, fewer version conflicts, the Arduino IDE setup stays short.
 - **Cost:** small helpers (JSON, buzzer patterns) are written by hand.
+- **Superseded by D16 (v2.2):** LiquidCrystal_I2C was replaced by U8g2. The rule is now Keypad, U8g2 and Adafruit NeoPixel.
 
 ## D12. Active buzzer with on/off patterns (v2.1)
 
@@ -86,9 +87,22 @@ Short records of choices that shape the project. Each entry says what was decide
 - **Decision:** people-facing text in Portuguese; code, comments, logs and docs in English.
 - **Why:** the users are Portuguese speakers; contributors and tools work best in English.
 - **Cost:** two languages to keep consistent; LCD text without accents.
+- **Note (v2.2):** the LCD is now an OLED (D16). Its fonts have no accents either, so display text stays ASCII.
 
 ## D15. User edits by list position
 
 - **Decision:** the API addresses users by `index`, not by an ID.
 - **Why:** no ID in the v1 layout (D3); simple for 20 users.
 - **Cost:** concurrent edits can hit a stale position. The page reloads the list after every change.
+
+## D16. U8g2 for the 0.96" OLED (v2.2)
+
+- **Decision:** the 16x2 LCD with a PCF8574 backpack is replaced by a 0.96" 128x64 SSD1306 OLED, driven by the U8g2 library with a full frame buffer (`U8G2_SSD1306_128X64_NONAME_F_HW_I2C`). U8g2 replaces LiquidCrystal_I2C, so the library rule of D11 becomes: only Keypad, U8g2 and Adafruit NeoPixel.
+- **Why:** one library brings the drivers for both SSD1306 and SH1106 (the 1.3" modules) and a set of fonts, so a module swap is a one-line change. The full buffer (1 KB) lets the firmware draw a whole screen and send it once, without flicker. The OLED runs on 3V3, which removes the 5V I2C pull-up issue of the LCD backpack.
+- **Cost:** about 1 KB of RAM for the buffer and some flash for the fonts. The fonts have no accents, so screen text stays ASCII. OLED pixels can burn in (see D17).
+
+## D17. Screen off at night via NTP time (v2.2)
+
+- **Decision:** from `DISPLAY_OFF_HOUR` to `DISPLAY_ON_HOUR` (00:00 to 08:00) the panel turns off when the PIN prompt is empty and no key was pressed for 30 s. Local time comes from NTP through `configTzTime()` in the ESP32 core; no RTC module and no extra library.
+- **Why:** an OLED that shows the same static prompt all night burns in. Nobody uses the keypad at night, so the screen can be dark then.
+- **Cost:** the clock needs WiFi. Without it (or before the first sync) the screen stays on all night and the header has no clock. At night the first key both wakes the screen and is typed as a digit.

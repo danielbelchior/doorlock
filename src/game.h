@@ -10,7 +10,7 @@
 #include "led.h"
 #include "users.h"
 
-// Values match the menu digits shown on the LCD.
+// Values match the menu digits shown on the display.
 enum class MenuAction : uint8_t { Hotspot = 1, ShowIp = 2, Restart = 3 };
 
 // Keypad state machine: PIN entry -> greeting -> math challenge -> result
@@ -32,11 +32,14 @@ class Game {
   // True when nothing is being typed, so a notice can be shown safely.
   bool isIdle() const;
 
+  // True at an empty PIN prompt with no key for at least ms.
+  bool restingFor(uint32_t ms) const;
+
   // Temporary message; any key or the timeout returns to the PIN prompt.
-  void showNotice(const String& top, const String& bottom, uint32_t durationMs);
+  void showNotice(const Screen& screen, uint32_t durationMs);
 
   // Message that stays until endBusy(); keys are ignored meanwhile.
-  void showBusy(const String& top, const String& bottom);
+  void showBusy(const Screen& screen);
   void endBusy();
 
  private:

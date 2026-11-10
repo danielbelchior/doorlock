@@ -13,7 +13,7 @@ bool isValidName(const String& name) {
   if (name.length() < 1 || name.length() > USER_NAME_LEN) return false;
   for (size_t i = 0; i < name.length(); i++) {
     const uint8_t c = static_cast<uint8_t>(name[i]);
-    if (c < 32 || c > 126) return false;  // the LCD only shows ASCII
+    if (c < 32 || c > 126) return false;  // the display fonts are ASCII only
   }
   return true;
 }

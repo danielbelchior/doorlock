@@ -56,12 +56,12 @@
 <text x="426" y="623" text-anchor="start" fill="#f9fafb" font-size="13" font-weight="bold">GND</text>
 <line x1="372" y1="618" x2="405" y2="618" stroke="#111827" stroke-width="2" stroke-linecap="round"/>
 <rect x="52" y="604" width="320" height="28" rx="7" fill="#e5e7eb" stroke="#111827" stroke-width="1"/>
-<text x="362" y="623" text-anchor="end" fill="#111827" font-weight="bold">GND · LCD GND, LED GND</text>
+<text x="362" y="623" text-anchor="end" fill="#111827" font-weight="bold">GND · OLED GND, LED GND</text>
 <circle cx="412" cy="654" r="7" fill="#fbbf24" stroke="#92400e" stroke-width="1.5"/>
 <text x="426" y="659" text-anchor="start" fill="#f9fafb" font-size="13" font-weight="bold">VIN</text>
 <line x1="372" y1="654" x2="405" y2="654" stroke="#7f1d1d" stroke-width="2" stroke-linecap="round"/>
 <rect x="52" y="640" width="320" height="28" rx="7" fill="#fee2e2" stroke="#7f1d1d" stroke-width="1"/>
-<text x="362" y="659" text-anchor="end" fill="#7f1d1d" font-weight="bold">5V · LCD VCC, LED VCC</text>
+<text x="362" y="659" text-anchor="end" fill="#7f1d1d" font-weight="bold">5V · LED VCC</text>
 <circle cx="628" cy="150" r="7" fill="#fbbf24" stroke="#92400e" stroke-width="1.5"/>
 <text x="614" y="155" text-anchor="end" fill="#f9fafb" font-size="13" font-weight="bold">23</text>
 <line x1="635" y1="150" x2="668" y2="150" stroke="#7c2d12" stroke-width="2" stroke-linecap="round"/>
@@ -71,7 +71,7 @@
 <text x="614" y="191" text-anchor="end" fill="#f9fafb" font-size="13" font-weight="bold">22</text>
 <line x1="635" y1="186" x2="668" y2="186" stroke="#4c1d95" stroke-width="2" stroke-linecap="round"/>
 <rect x="668" y="172" width="320" height="28" rx="7" fill="#ede9fe" stroke="#4c1d95" stroke-width="1"/>
-<text x="678" y="191" fill="#4c1d95" font-weight="bold">LCD SCL</text>
+<text x="678" y="191" fill="#4c1d95" font-weight="bold">OLED SCL</text>
 <circle cx="628" cy="222" r="7" fill="#fbbf24" stroke="#92400e" stroke-width="1.5"/>
 <text x="614" y="227" text-anchor="end" fill="#f9fafb" font-size="13" font-weight="bold">TX0 1</text>
 <circle cx="628" cy="258" r="7" fill="#fbbf24" stroke="#92400e" stroke-width="1.5"/>
@@ -80,7 +80,7 @@
 <text x="614" y="299" text-anchor="end" fill="#f9fafb" font-size="13" font-weight="bold">21</text>
 <line x1="635" y1="294" x2="668" y2="294" stroke="#4c1d95" stroke-width="2" stroke-linecap="round"/>
 <rect x="668" y="280" width="320" height="28" rx="7" fill="#ede9fe" stroke="#4c1d95" stroke-width="1"/>
-<text x="678" y="299" fill="#4c1d95" font-weight="bold">LCD SDA</text>
+<text x="678" y="299" fill="#4c1d95" font-weight="bold">OLED SDA</text>
 <circle cx="628" cy="330" r="7" fill="#fbbf24" stroke="#92400e" stroke-width="1.5"/>
 <text x="614" y="335" text-anchor="end" fill="#f9fafb" font-size="13" font-weight="bold">19</text>
 <line x1="635" y1="330" x2="668" y2="330" stroke="#1e3a8a" stroke-width="2" stroke-linecap="round"/>
@@ -130,13 +130,13 @@
 <text x="614" y="659" text-anchor="end" fill="#f9fafb" font-size="13" font-weight="bold">3V3</text>
 <line x1="635" y1="654" x2="668" y2="654" stroke="#7f1d1d" stroke-width="2" stroke-linecap="round"/>
 <rect x="668" y="640" width="320" height="28" rx="7" fill="#fee2e2" stroke="#7f1d1d" stroke-width="1"/>
-<text x="678" y="659" fill="#7f1d1d" font-weight="bold">3.3V · Buzzer VCC</text>
+<text x="678" y="659" fill="#7f1d1d" font-weight="bold">3.3V · OLED VCC, Buzzer VCC</text>
 <rect x="30" y="788" width="22" height="16" rx="4" fill="#dbeafe" stroke="#1e3a8a"/>
 <text x="60" y="801" font-size="13">Keypad row</text>
 <rect x="175" y="788" width="22" height="16" rx="4" fill="#d1fae5" stroke="#065f46"/>
 <text x="205" y="801" font-size="13">Keypad column</text>
 <rect x="320" y="788" width="22" height="16" rx="4" fill="#ede9fe" stroke="#4c1d95"/>
-<text x="350" y="801" font-size="13">I2C (LCD)</text>
+<text x="350" y="801" font-size="13">I2C (OLED)</text>
 <rect x="465" y="788" width="22" height="16" rx="4" fill="#ffedd5" stroke="#7c2d12"/>
 <text x="495" y="801" font-size="13">LED data</text>
 <rect x="610" y="788" width="22" height="16" rx="4" fill="#fee2e2" stroke="#7f1d1d"/>

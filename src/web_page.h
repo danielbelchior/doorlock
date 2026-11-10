@@ -102,7 +102,7 @@ progress{display:block;width:100%;height:12px;margin:0 0 14px}
    <form id="userForm" class="card" autocomplete="off">
     <h2 id="formTitle">Adicionar usuário</h2>
     <label>Nome<input id="uName" maxlength="16" required></label>
-    <p class="hint">Até 16 caracteres, sem acentos (o LCD não os mostra).</p>
+    <p class="hint">Até 16 caracteres, sem acentos (a tela do teclado não os mostra).</p>
     <label>Senha<input id="uPin" maxlength="8" required inputmode="numeric" pattern="[0-9]{1,8}"></label>
     <p class="hint">1 a 8 dígitos, diferente da senha dos outros usuários.</p>
     <label class="check"><input id="uChallenge" type="checkbox" checked>Fazer o desafio de matemática</label>
@@ -128,7 +128,7 @@ progress{display:block;width:100%;height:12px;margin:0 0 14px}
     <ul id="scanList" class="scan"></ul>
     <label>Nome da rede (SSID)<input id="wSsid" maxlength="32" required autocapitalize="none" autocorrect="off" spellcheck="false"></label>
     <label>Senha da rede<input id="wPass" type="password" maxlength="63" autocomplete="new-password"></label>
-    <p class="hint">Deixe vazio em redes abertas. Depois de salvar, o teclado se conecta à nova rede e mostra o IP no LCD. Para ver o IP de novo, use a opção 2 do menu do teclado.</p>
+    <p class="hint">Deixe vazio em redes abertas. Depois de salvar, o teclado se conecta à nova rede e mostra o IP na tela. Para ver o IP de novo, use a opção 2 do menu do teclado.</p>
     <button class="primary block">Salvar e conectar</button>
    </form>
   </div>
@@ -384,7 +384,7 @@ $('#wifiForm').addEventListener('submit', async e => {
   try {
     await api('/api/wifi', {ssid: ssid, pass: pass});
     $('#wPass').value = '';
-    toast('Salvo. Conectando a ' + ssid + '... O novo IP aparece no LCD.');
+    toast('Salvo. Conectando a ' + ssid + '... O novo IP aparece na tela do teclado.');
   } catch (err) { toast(err.message, true); }
 });
 

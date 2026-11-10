@@ -18,7 +18,8 @@ flowchart LR
     end
     Keypad[[4x4 keypad]] --> Main
     Main --> Game
-    Game --> Display --> LCD[[LCD 16x2]]
+    Game --> Display --> OLED[[OLED 128x64]]
+    Main -->|clock, network, sleep| Display
     Game --> Led --> LEDHW[[SK6812]]
     Game --> Buzzer --> BuzzHW[[MH-FMD buzzer]]
     Game --> Users
@@ -38,9 +39,9 @@ Each module owns one piece of hardware or one concern. Only `main.cpp` knows abo
 
 | Module | Owns | Depends on |
 |---|---|---|
-| `main.cpp` | Object creation, keypad reading, menu actions, WiFi event reactions, OTA callbacks | everything |
-| `Game` | Keypad state machine, menu, all LCD text | `Display`, `StatusLed`, `Buzzer`, `UserStore` |
-| `Display` | LCD; rewrites only changed lines | `LiquidCrystal_I2C` |
+| `main.cpp` | Object creation, keypad reading, menu actions, WiFi event reactions, OTA callbacks, header clock and network icon, night screen-off | everything, plus `configTzTime()` from the ESP32 core |
+| `Game` | Keypad state machine, menu, all screen content | `Display`, `StatusLed`, `Buzzer`, `UserStore` |
+| `Display` | OLED: header, body layouts, footer, power save; sends a frame only when something changed | `U8g2` |
 | `StatusLed` | One SK6812 pixel: key flash and N blinks | `Adafruit_NeoPixel` |
 | `Buzzer` | Active buzzer on/off patterns | Arduino `digitalWrite` |
 | `UserStore` | Users and their challenge option in NVS | `Preferences` |
@@ -53,23 +54,27 @@ Each module owns one piece of hardware or one concern. Only `main.cpp` knows abo
 Rules that keep this shape:
 
 - `Game` never touches WiFi or the web server. It reports menu choices through the `onMenuAction` callback and `main.cpp` acts on them.
-- `WebUi` never touches the LCD. It reports OTA progress through `onOtaStart` / `onOtaEnd` and `main.cpp` updates the LCD, LED and buzzer.
+- `WebUi` never touches the display. It reports OTA progress through `onOtaStart` / `onOtaEnd` and `main.cpp` updates the display, LED and buzzer.
+- `Display` knows nothing about WiFi, time or game states. `Game` gives it a `Screen`; `main.cpp` gives it the network status, the clock text and the sleep flag.
 - `WifiService` reports connection changes as events (`takeEvent()`), polled by `main.cpp`.
 
 ## The main loop
 
 ```text
-setup():  Serial, Wire, display, led, buzzer, random seed,
-          settings, users, wifi (starts TCP/IP), web callbacks, web, game
+setup():  Serial, display (starts I2C), led, buzzer, random seed,
+          settings, users, wifi (starts TCP/IP), NTP (configTzTime),
+          web callbacks, web, game
 
-loop():   wifi.update()      reconnects, hotspot DNS, events
-          web.update()       one HTTP client, delayed reboot
-          led.update()       advances blink phases
-          buzzer.update()    advances beep steps
-          game.update()      screen timeouts
-          handleWifiEvents() shows the IP when connected and idle
-          restart check      menu option 3
-          keypad.getKey()    on a key: led.keyFlash(), buzzer.play(Key), game.handleKey()
+loop():   wifi.update()          reconnects, hotspot DNS, events
+          web.update()           one HTTP client, delayed reboot
+          led.update()           advances blink phases
+          buzzer.update()        advances beep steps
+          game.update()          screen timeouts
+          handleWifiEvents()     shows the IP when connected and idle
+          updateDisplayStatus()  once a second: network icon, clock, night screen-off
+          restart check          menu option 3
+          keypad.getKey()        on a key: display.setAsleep(false), led.keyFlash(),
+                                 buzzer.play(Key), game.handleKey()
 ```
 
 Every `update()` is cheap and returns at once when nothing is due. Time is compared with `timeReached(deadline)` from `util.h`, which survives the `millis()` wrap after about 49 days. The only blocking moment is an OTA upload: `WebServer` handles the whole request inside `web.update()`, so the keypad freezes for a few seconds and `Buzzer::stop()` is called first so no beep gets stuck on.
@@ -96,11 +101,13 @@ stateDiagram-v2
     Busy --> EnterPin: OTA failed
 ```
 
-States are `Game::State`: `EnterPin`, `Greeting`, `Challenge`, `Result`, `Notice`, `Busy`, `Menu`. Screen texts per state are in [DESIGN.md](DESIGN.md#lcd-screens).
+States are `Game::State`: `EnterPin`, `Greeting`, `Challenge`, `Result`, `Notice`, `Busy`, `Menu`. Screen texts per state are in [DESIGN.md](DESIGN.md#oled-screens).
 
 ## Data flows
 
 **Key press.** `keypad.getKey()` returns a char. `main.cpp` flashes the LED yellow and plays the key click, then `Game::handleKey()` acts by state. On `#` in `EnterPin`, `Game::submitPin()` asks `UserStore::findByPin()`. On success it copies the name, reads `UserStore::challenge(index)` and chooses `Greeting` or `Result`. Result feedback (`StatusLed::blink`, `Buzzer::play(Success/Error)`) replaces the key click.
+
+**Clock and night screen-off.** `setup()` calls `configTzTime(TIME_ZONE, NTP_SERVER_1, NTP_SERVER_2)` after `wifi.begin()`; the ESP32 core syncs the time in the background once WiFi is up. Once a second, `updateDisplayStatus()` sets the header network icon and, after the first sync, the `HH:MM` clock. Between `DISPLAY_OFF_HOUR` and `DISPLAY_ON_HOUR` it turns the panel off while `Game::restingFor(DISPLAY_NIGHT_WAKE_MS)` is true (empty PIN prompt, no key for 30 s). A key turns the panel on in `loop()` and is still passed to `Game::handleKey()`. Before the first sync the clock is hidden and the panel never turns off.
 
 **Web request.** The browser loads `/` (the embedded page), then calls `/api/*` with `fetch`. `WebUi` validates input through `UserStore` or `Settings`, which save to NVS and return a result code. `WebUi` turns it into JSON. See [API.md](API.md).
 

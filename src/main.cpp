@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <Wire.h>
+#include <time.h>
 
 #include "buzzer.h"
 #include "config.h"
@@ -39,14 +39,17 @@ WebUi web(users, settings, wifi);
 
 bool restartPending = false;
 uint32_t restartAtMs = 0;
+uint32_t nextClockCheckMs = 0;
 
 void showNetworkInfo(uint32_t durationMs) {
   if (wifi.connected()) {
-    game.showNotice("IP:", wifi.ip(), durationMs);
+    game.showNotice(messageScreen("Rede WiFi", wifi.ip(), String(WIFI_HOSTNAME) + ".local"),
+                    durationMs);
   } else if (!settings.hasWifi()) {
-    game.showNotice("Sem WiFi", "nao configurado", durationMs);
+    game.showNotice(messageScreen("Rede WiFi", "Sem WiFi", "Nao configurado", Icon::Error),
+                    durationMs);
   } else {
-    game.showNotice("Sem WiFi", "Conectando...", durationMs);
+    game.showNotice(messageScreen("Rede WiFi", "Sem WiFi", "Conectando..."), durationMs);
   }
 }
 
@@ -54,13 +57,13 @@ void handleMenuAction(MenuAction action) {
   switch (action) {
     case MenuAction::Hotspot:
       wifi.startHotspot();
-      game.showNotice(wifi.apSsid(), wifi.apIp(), HOTSPOT_INFO_MS);
+      game.showNotice(messageScreen("Hotspot", wifi.apSsid(), wifi.apIp()), HOTSPOT_INFO_MS);
       break;
     case MenuAction::ShowIp:
       showNetworkInfo(MENU_INFO_MS);
       break;
     case MenuAction::Restart:
-      game.showBusy("Reiniciando...", "");
+      game.showBusy(messageScreen("Sistema", "Reiniciando..."));
       restartPending = true;
       restartAtMs = millis() + 1000;
       break;
@@ -74,6 +77,36 @@ void handleWifiEvents() {
   }
 }
 
+bool inQuietHours(int hour) {
+  if (DISPLAY_OFF_HOUR == DISPLAY_ON_HOUR) return false;
+  if (DISPLAY_OFF_HOUR < DISPLAY_ON_HOUR) return hour >= DISPLAY_OFF_HOUR && hour < DISPLAY_ON_HOUR;
+  return hour >= DISPLAY_OFF_HOUR || hour < DISPLAY_ON_HOUR;  // window crosses midnight
+}
+
+// Once a second: header clock, network icon and the night screen-off.
+void updateDisplayStatus() {
+  if (!timeReached(nextClockCheckMs)) return;
+  nextClockCheckMs = millis() + 1000;
+
+  display.setNetwork(wifi.apActive()    ? NetStatus::Hotspot
+                     : wifi.connected() ? NetStatus::Online
+                                        : NetStatus::Offline);
+
+  // Before the first NTP sync the clock counts from 1970.
+  const time_t now = time(nullptr);
+  if (now < 1700000000) {
+    display.setClock("");
+    display.setAsleep(false);
+    return;
+  }
+  struct tm local;
+  localtime_r(&now, &local);
+  char hhmm[6];
+  snprintf(hhmm, sizeof(hhmm), "%02d:%02d", local.tm_hour, local.tm_min);
+  display.setClock(hhmm);
+  display.setAsleep(inQuietHours(local.tm_hour) && game.restingFor(DISPLAY_NIGHT_WAKE_MS));
+}
+
 }  // namespace
 
 void setup() {
@@ -81,9 +114,8 @@ void setup() {
   Serial.println();
   Serial.println("[boot] Teclado v" FIRMWARE_VERSION);
 
-  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
-  display.begin();
-  display.show("Teclado v" FIRMWARE_VERSION, "Iniciando...");
+  display.begin();  // also starts the I2C bus
+  display.show(messageScreen("Teclado", "v" FIRMWARE_VERSION, "Iniciando..."));
   led.begin();
   buzzer.begin();
   randomSeed(esp_random());
@@ -91,14 +123,16 @@ void setup() {
   settings.begin();
   users.begin();
   wifi.begin();  // must run before web.begin(): it starts the TCP/IP stack
+  configTzTime(TIME_ZONE, NTP_SERVER_1, NTP_SERVER_2);  // syncs in the background once online
 
   web.onOtaStart([]() {
     buzzer.stop();  // loop() stalls during the upload, so a note would never end
-    game.showBusy("Atualizando...", "Nao desligue!");
+    display.setAsleep(false);
+    game.showBusy(messageScreen("Firmware", "Atualizando...", "Nao desligue!"));
   });
   web.onOtaEnd([](bool success) {
     if (success) {
-      game.showBusy("Atualizado!", "Reiniciando...");
+      game.showBusy(messageScreen("Firmware", "Atualizado!", "Reiniciando...", Icon::Ok));
       led.blink(LED_GREEN);
       buzzer.play(Sound::Success);
     } else {
@@ -121,12 +155,14 @@ void loop() {
   buzzer.update();
   game.update();
   handleWifiEvents();
+  updateDisplayStatus();
 
   if (restartPending && timeReached(restartAtMs)) ESP.restart();
 
   const char key = keypad.getKey();
   if (key == NO_KEY) return;
 
+  display.setAsleep(false);
   led.keyFlash();
   buzzer.play(Sound::Key);
   game.handleKey(key);

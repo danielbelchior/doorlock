@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-#define FIRMWARE_VERSION "2.1.0"
+#define FIRMWARE_VERSION "2.2.0"
 
 // ---------------------------------------------------------------------------
 // Pins (ESP32 DevKit). Read docs/hardware.md before changing any of these:
@@ -27,11 +27,25 @@ constexpr uint8_t PIN_LED = 23;
 constexpr uint8_t PIN_BUZZER = 33;  // MH-FMD I/O
 
 // ---------------------------------------------------------------------------
-// LCD 16x2 with PCF8574 I2C backpack
+// 0.96" 128x64 SSD1306 OLED on I2C
 // ---------------------------------------------------------------------------
-constexpr uint8_t DISPLAY_I2C_ADDRESS = 0x27;  // some backpacks use 0x3F
-constexpr uint8_t DISPLAY_COLS = 16;
-constexpr uint8_t DISPLAY_ROWS = 2;
+constexpr uint8_t DISPLAY_I2C_ADDRESS = 0x3C;  // some modules use 0x3D
+constexpr uint32_t DISPLAY_I2C_CLOCK_HZ = 400000;
+constexpr uint8_t DISPLAY_CONTRAST = 160;  // 0-255; lower slows burn-in
+constexpr bool DISPLAY_ROTATE_180 = false;  // true if the module is mounted upside down
+
+// The screen turns off from DISPLAY_OFF_HOUR to DISPLAY_ON_HOUR (local time)
+// while the PIN prompt is idle, to save the OLED from burn-in. A key wakes it;
+// it turns off again DISPLAY_NIGHT_WAKE_MS after the last key. Needs the
+// clock from NTP: until it is set, the screen stays on. Equal hours disable it.
+constexpr uint8_t DISPLAY_OFF_HOUR = 0;  // 00:00
+constexpr uint8_t DISPLAY_ON_HOUR = 8;   // 08:00
+constexpr uint32_t DISPLAY_NIGHT_WAKE_MS = 30000;
+
+// POSIX TZ string for the clock. "<-03>3" is Brasilia time (UTC-3, no DST).
+constexpr const char* TIME_ZONE = "<-03>3";
+constexpr const char* NTP_SERVER_1 = "pool.ntp.org";
+constexpr const char* NTP_SERVER_2 = "time.google.com";
 
 // ---------------------------------------------------------------------------
 // SK6812 RGBW status LED

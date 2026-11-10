@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1100" height="840" viewBox="0 0 1100 840" font-family="Helvetica, Arial, sans-serif" font-size="15" fill="#1f2933">
 <rect width="1100" height="840" fill="#ffffff"/>
-<text x="550" y="36" text-anchor="middle" font-size="21" font-weight="bold">Doorlock keypad: wiring (firmware v2.1)</text>
+<text x="550" y="36" text-anchor="middle" font-size="21" font-weight="bold">Doorlock keypad: wiring (firmware v2.2)</text>
 <rect x="30" y="60" width="240" height="570" rx="12" fill="#ecfdf5" stroke="#34a37a" stroke-width="1.5"/>
 <text x="150" y="90" text-anchor="middle" font-size="18" font-weight="bold" fill="#065f46">Keypad 4x4</text>
 <rect x="50" y="108" width="44" height="44" rx="8" fill="#ffffff" stroke="#9ca3af"/>
@@ -81,8 +81,8 @@
 <text x="436" y="619" font-weight="bold">GPIO26</text>
 <text x="510" y="619" font-size="12" fill="#b45309">was GPIO15 in v1</text>
 <rect x="860" y="90" width="210" height="200" rx="12" fill="#ecfdf5" stroke="#34a37a" stroke-width="1.5"/>
-<text x="965" y="116" text-anchor="middle" font-size="18" font-weight="bold" fill="#065f46">LCD 16x2 I2C</text>
-<text x="965" y="136" text-anchor="middle" font-size="12" fill="#6b7280">PCF8574 backpack, 0x27</text>
+<text x="965" y="116" text-anchor="middle" font-size="18" font-weight="bold" fill="#065f46">OLED 0.96" SSD1306</text>
+<text x="965" y="136" text-anchor="middle" font-size="12" fill="#6b7280">I2C 0x3C, 128x64</text>
 <rect x="860" y="360" width="210" height="180" rx="12" fill="#ecfdf5" stroke="#34a37a" stroke-width="1.5"/>
 <text x="965" y="388" text-anchor="middle" font-size="18" font-weight="bold" fill="#065f46">SK6812 RGBW</text>
 <text x="965" y="406" text-anchor="middle" font-size="12" fill="#6b7280">5050 LED, 1 pixel</text>
@@ -91,11 +91,11 @@
 <line x1="720" y1="160" x2="860" y2="160" stroke="#6b7280" stroke-width="3" stroke-linecap="round"/>
 <circle cx="720" cy="160" r="4.5" fill="#6b7280"/>
 <circle cx="860" cy="160" r="4.5" fill="#6b7280"/>
-<text x="704" y="200" text-anchor="end" font-weight="bold">5V (VIN)</text>
-<text x="876" y="200" fill="#dc2626" font-weight="bold">VCC</text>
-<line x1="720" y1="195" x2="860" y2="195" stroke="#dc2626" stroke-width="3" stroke-linecap="round"/>
-<circle cx="720" cy="195" r="4.5" fill="#dc2626"/>
-<circle cx="860" cy="195" r="4.5" fill="#dc2626"/>
+<text x="704" y="200" text-anchor="end" font-weight="bold">3V3</text>
+<text x="876" y="200" fill="#ea580c" font-weight="bold">VCC</text>
+<line x1="720" y1="195" x2="860" y2="195" stroke="#ea580c" stroke-width="3" stroke-linecap="round"/>
+<circle cx="720" cy="195" r="4.5" fill="#ea580c"/>
+<circle cx="860" cy="195" r="4.5" fill="#ea580c"/>
 <text x="704" y="235" text-anchor="end" font-weight="bold">GPIO21 · SDA</text>
 <text x="876" y="235" fill="#7c3aed" font-weight="bold">SDA</text>
 <line x1="720" y1="230" x2="860" y2="230" stroke="#7c3aed" stroke-width="3" stroke-linecap="round"/>

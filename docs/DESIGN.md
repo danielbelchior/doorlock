@@ -7,14 +7,15 @@ How the device looks, sounds and reads to the people who use it. Text shown to p
 - **Immediate feedback.** Every key press lights the LED and clicks the buzzer. Every outcome has a screen, a color and a sound.
 - **Never stuck.** Every screen has a timeout back to the PIN prompt, and most also accept any key to go back.
 - **Result feedback wins.** A key press never cuts a green or red blink or a success or error beep pattern short.
-- **Fits the hardware.** LCD text is ASCII, at most 16 characters per line, no accents.
+- **Fits the hardware.** Screen text is ASCII without accents, because the display fonts have none. Long text shrinks to a smaller font.
+- **Spares the OLED.** The panel turns off at night while nobody uses the keypad, to slow burn-in.
 - **Toy-grade security is visible.** The web page does not pretend to be secure (no fake login).
 
 ## Keypad
 
 | Key | Action |
 |---|---|
-| `0` to `9` | Type a digit (PIN shows `*`, answers show digits) |
+| `0` to `9` | Type a digit (PIN shows dots, answers show digits) |
 | `#` | Confirm |
 | `*` | Clear the input, or leave the menu |
 | `D` | After `2205`: open the menu. In the menu: confirm the chosen option |
@@ -22,23 +23,43 @@ How the device looks, sounds and reads to the people who use it. Text shown to p
 
 Limits: PIN up to 8 digits (`USER_PIN_LEN`), answer up to 6 digits (`ANSWER_MAX_LEN`). Extra digits are ignored.
 
-## LCD screens
+## OLED screens
 
-| State | Line 1 | Line 2 | Leaves after |
-|---|---|---|---|
-| Boot | `Teclado v2.1.0` | `Iniciando...` | setup ends |
-| `EnterPin` | `Digite a senha:` | one `*` per digit | half-typed input clears after 20 s |
-| `Greeting` | `Bem-vindo(a):` | name | 1.5 s, then the challenge |
-| `Challenge` | `256 + 139 = ?` | `> ` + typed answer | `#`, or 60 s idle |
-| `Result`, correct | `Correto! :)` | name | 3 s or any key |
-| `Result`, wrong | `Errado! :(` | `Era: <answer>` | 3 s or any key |
-| `Result`, unknown PIN | `ERRO` | `Senha invalida` | 3 s or any key |
-| `Result`, no challenge | `Bem-vindo(a):` | name | 3 s or any key |
-| `Menu` | `1Hotspot 2IP  >` + chosen digit | `3Reiniciar *Sair` | `*`, `D`, or 30 s idle |
-| `Notice`, IP | `IP:` | the IP | 10 s (menu) or 4 s (on connect) |
-| `Notice`, no WiFi | `Sem WiFi` | `nao configurado` / `Conectando...` | 4 s or 10 s |
-| `Notice`, hotspot | `Teclado-XXXX` | `192.168.4.1` | 20 s |
-| `Busy` | `Atualizando...` / `Atualizado!` / `Reiniciando...` | `Nao desligue!` / `Reiniciando...` / empty | OTA end or restart |
+The display is a 0.96" SSD1306 OLED with 128x64 pixels. The preview below shows every screen at 3x scale. It is approximate: the shapes are pixel-exact from `src/display.cpp`, but the text uses Helvetica instead of the U8g2 bitmap fonts of the device.
+
+![OLED screens](oled-screens.svg)
+
+Every screen has the same frame:
+
+- **Header** (rows 0 to 15, so it fits the yellow band of two-color modules): the title on the left; on the right the clock `HH:MM` (only after NTP has synced) and a network icon. Filled signal bars mean connected, outlined bars with a slash mean offline, and an inverted `AP` badge means the setup hotspot is on. A line separates the header from the body.
+- **Body**, one of three layouts:
+  - **Message:** the main text in the largest bold font that fits (`helvB14`, then 12, 10, 08), an optional detail line below it (`helvR10` or `helvR08`), and an optional round icon on the left (check for success, X for errors).
+  - **Pin:** 8 slots, a large dot per typed digit and small dots for the rest. Digits never show, and the slots do not reveal the PIN length beyond the maximum of 8.
+  - **Menu:** numbered rows; the chosen row is highlighted (inverted).
+- **Footer** (optional): key hints drawn as small inverted keycaps, for example `[#] Entrar  [*] Apagar`.
+
+The frame is sent to the panel only when something changed. Text is ASCII only, because the fonts have no accents. There is no fixed character limit: long text shrinks to a smaller font and is clipped only if it still does not fit (about 100 px wide next to an icon, 128 px otherwise).
+
+| State | Title | Main text | Detail | Icon | Footer | Leaves after |
+|---|---|---|---|---|---|---|
+| Boot | `Teclado` | `v2.2.0` | `Iniciando...` | | | setup ends |
+| `EnterPin` | `Digite a senha` | Pin layout, one dot per digit | | | `# Entrar`, `* Apagar` | half-typed input clears after 20 s |
+| `Greeting` | `Bem-vindo(a)!` | name | `Prepare-se...` | check | | 1.5 s, then the challenge |
+| `Challenge` | `Desafio` | `256 + 139` | `= ` + typed answer + `_` | | `# Responder`, `* Apagar` | `#`, or 60 s idle |
+| `Result`, correct | `Desafio` | `Correto!` | name | check | | 3 s or any key |
+| `Result`, wrong | `Desafio` | `Errado!` | `Resposta: <answer>` | X | | 3 s or any key |
+| `Result`, unknown PIN | `Acesso negado` | `Senha invalida` | `Tente de novo` | X | | 3 s or any key |
+| `Result`, no challenge | `Bem-vindo(a)!` | name | | check | | 3 s or any key |
+| `Menu` | `Menu` | rows `1 Hotspot de config.`, `2 Ver endereco IP`, `3 Reiniciar`; typing `1` to `3` highlights a row | | | `D Confirmar`, `* Sair` | `*`, `D`, or 30 s idle |
+| `Notice`, IP | `Rede WiFi` | the IP | `keypad.local` | | | 10 s (menu) or 4 s (on connect) |
+| `Notice`, no WiFi | `Rede WiFi` | `Sem WiFi` | `Nao configurado` / `Conectando...` | X / none | | 4 s or 10 s |
+| `Notice`, hotspot | `Hotspot` | `Teclado-XXXX` | `192.168.4.1` | | | 20 s |
+| `Busy`, OTA | `Firmware` | `Atualizando...`, then `Atualizado!` | `Nao desligue!`, then `Reiniciando...` | none, then check | | OTA end |
+| `Busy`, restart | `Sistema` | `Reiniciando...` | | | | restart |
+
+### Night screen-off
+
+OLED pixels wear out when they show the same image for a long time (burn-in), and the PIN prompt is static. From `DISPLAY_OFF_HOUR` (00:00) to `DISPLAY_ON_HOUR` (08:00) local time, the panel turns off when the PIN prompt is empty and no key was pressed for 30 s (`DISPLAY_NIGHT_WAKE_MS`). Any key turns it on again, and that key is also processed normally, so a digit is typed. A notice, such as the IP after WiFi connects, also turns it on. The time comes from NTP, so until the clock is synced (for example without WiFi) the screen never turns off. Equal hours disable the feature.
 
 Challenge operands: addition `a, b` in [100, 500); subtraction `a` in [200, 900), `b` in [100, a); multiplication `a` in [12, 100), `b` in [2, 10). The `x` sign is used for multiplication.
 

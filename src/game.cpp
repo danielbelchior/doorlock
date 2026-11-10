@@ -2,6 +2,17 @@
 
 #include "util.h"
 
+namespace {
+
+constexpr const char* TITLE_CHALLENGE = "Desafio";
+constexpr const char* TITLE_WELCOME = "Bem-vindo(a)!";
+constexpr const char* FOOTER_TYPING = "# Entrar|* Apagar";
+constexpr const char* FOOTER_ANSWER = "# Responder|* Apagar";
+constexpr const char* FOOTER_MENU = "D Confirmar|* Sair";
+constexpr const char* MENU_ITEMS = "Hotspot de config.\nVer endereco IP\nReiniciar";
+
+}  // namespace
+
 Game::Game(Display& display, StatusLed& led, Buzzer& buzzer, UserStore& users)
     : display_(display), led_(led), buzzer_(buzzer), users_(users) {}
 
@@ -11,6 +22,10 @@ void Game::begin() {
 
 bool Game::isIdle() const {
   return (state_ == State::EnterPin && input_.length() == 0) || state_ == State::Notice;
+}
+
+bool Game::restingFor(uint32_t ms) const {
+  return state_ == State::EnterPin && input_.length() == 0 && timeReached(lastActivityMs_ + ms);
 }
 
 void Game::update() {
@@ -91,17 +106,17 @@ void Game::handleKey(char key) {
   }
 }
 
-void Game::showNotice(const String& top, const String& bottom, uint32_t durationMs) {
+void Game::showNotice(const Screen& screen, uint32_t durationMs) {
   if (state_ == State::Busy) return;
   input_ = "";
-  display_.show(top, bottom);
+  display_.show(screen);
   enterTimedState(State::Notice, durationMs);
 }
 
-void Game::showBusy(const String& top, const String& bottom) {
+void Game::showBusy(const Screen& screen) {
   input_ = "";
   state_ = State::Busy;
-  display_.show(top, bottom);
+  display_.show(screen);
 }
 
 void Game::endBusy() {
@@ -117,13 +132,18 @@ void Game::resetToPrompt() {
 }
 
 void Game::renderPrompt() {
-  String stars;
-  for (size_t i = 0; i < input_.length(); i++) stars += '*';
-  display_.show("Digite a senha:", stars);
+  Screen screen;
+  screen.layout = Layout::Pin;
+  screen.title = "Digite a senha";
+  for (size_t i = 0; i < input_.length(); i++) screen.text += '*';
+  screen.footer = FOOTER_TYPING;
+  display_.show(screen);
 }
 
 void Game::renderChallenge() {
-  display_.show(question_ + " = ?", String("> ") + input_);
+  Screen screen = messageScreen(TITLE_CHALLENGE, question_, String("= ") + input_ + "_");
+  screen.footer = FOOTER_ANSWER;
+  display_.show(screen);
 }
 
 void Game::submitPin() {
@@ -134,16 +154,18 @@ void Game::submitPin() {
     const uint8_t userIndex = static_cast<uint8_t>(index);
     strncpy(userName_, users_.at(userIndex).name, USER_NAME_LEN);
     userName_[USER_NAME_LEN] = '\0';
-    display_.show("Bem-vindo(a):", userName_);
+    const bool withChallenge = users_.challenge(userIndex);
+    display_.show(messageScreen(TITLE_WELCOME, userName_, withChallenge ? "Prepare-se..." : "",
+                                Icon::Ok));
     led_.blink(LED_GREEN);
     buzzer_.play(Sound::Success);
-    if (users_.challenge(userIndex)) {
+    if (withChallenge) {
       enterTimedState(State::Greeting, GREETING_MS);
     } else {
       enterTimedState(State::Result, RESULT_MS);
     }
   } else {
-    display_.show("ERRO", "Senha invalida");
+    display_.show(messageScreen("Acesso negado", "Senha invalida", "Tente de novo", Icon::Error));
     led_.blink(LED_RED);
     buzzer_.play(Sound::Error);
     enterTimedState(State::Result, RESULT_MS);
@@ -185,11 +207,12 @@ void Game::submitAnswer() {
   input_ = "";
 
   if (given == answer_) {
-    display_.show("Correto! :)", userName_);
+    display_.show(messageScreen(TITLE_CHALLENGE, "Correto!", userName_, Icon::Ok));
     led_.blink(LED_GREEN);
     buzzer_.play(Sound::Success);
   } else {
-    display_.show("Errado! :(", String("Era: ") + String(answer_));
+    display_.show(messageScreen(TITLE_CHALLENGE, "Errado!", String("Resposta: ") + String(answer_),
+                                Icon::Error));
     led_.blink(LED_RED);
     buzzer_.play(Sound::Error);
   }
@@ -205,9 +228,13 @@ void Game::openMenu() {
 }
 
 void Game::renderMenu() {
-  String top = "1Hotspot 2IP  >";
-  if (menuChoice_) top += menuChoice_;
-  display_.show(top, "3Reiniciar *Sair");
+  Screen screen;
+  screen.layout = Layout::Menu;
+  screen.title = "Menu";
+  screen.text = MENU_ITEMS;
+  screen.selected = menuChoice_ ? menuChoice_ - '0' : 0;
+  screen.footer = FOOTER_MENU;
+  display_.show(screen);
 }
 
 void Game::runMenuChoice() {
