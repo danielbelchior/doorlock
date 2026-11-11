@@ -93,8 +93,8 @@ constexpr uint8_t USER_PIN_LEN = 8;
 // flash; these are only first-boot defaults.
 // ---------------------------------------------------------------------------
 constexpr const char* WIFI_HOSTNAME = "keypad";  // http://keypad.local/
-constexpr const char* DEFAULT_WIFI_SSID = "";
-constexpr const char* DEFAULT_WIFI_PASS = "";
+constexpr const char* DEFAULT_WIFI_SSID = "iot";
+constexpr const char* DEFAULT_WIFI_PASS = "lara1810";
 
 // Open setup hotspot (no password), started only from the keypad menu.
 constexpr const char* SETUP_AP_PREFIX = "Teclado";  // hotspot name: Teclado-XXXX
