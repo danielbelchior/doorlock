@@ -42,8 +42,8 @@ constexpr uint8_t DISPLAY_OFF_HOUR = 0;  // 00:00
 constexpr uint8_t DISPLAY_ON_HOUR = 8;   // 08:00
 constexpr uint32_t DISPLAY_NIGHT_WAKE_MS = 30000;
 
-// POSIX TZ string for the clock. "<-03>3" is Brasilia time (UTC-3, no DST).
-constexpr const char* TIME_ZONE = "<-03>3";
+// POSIX TZ string for the clock. Amsterdam: CET (UTC+1) / CEST (UTC+2) com DST automático.
+constexpr const char* TIME_ZONE = "CET-1CEST,M3.5.0,M10.5.0/3";
 constexpr const char* NTP_SERVER_1 = "pool.ntp.org";
 constexpr const char* NTP_SERVER_2 = "time.google.com";
 
