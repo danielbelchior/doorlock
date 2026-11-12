@@ -45,6 +45,7 @@ class Game {
  private:
   enum class State : uint8_t { EnterPin, Greeting, Challenge, Result, Notice, Busy, Menu };
 
+  void timeOut();
   void resetToPrompt();
   void renderPrompt();
   void renderChallenge();

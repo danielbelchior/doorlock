@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-#define FIRMWARE_VERSION "2.2.0"
+#define FIRMWARE_VERSION "2.3.0"
 
 // ---------------------------------------------------------------------------
 // Pins (ESP32 DevKit). Read docs/hardware.md before changing any of these:

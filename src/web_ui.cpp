@@ -111,12 +111,22 @@ void WebUi::sendError(int code, const String& message) {
   sendJson(code, String("{\"error\":") + jsonString(message) + "}");
 }
 
-void WebUi::sendUserResult(UserResult result) {
+void WebUi::sendUserResult(UserResult result, WebEvent success) {
   if (result == UserResult::Ok) {
     sendOk();
+    notify(success);
   } else {
-    sendError(result == UserResult::StorageError ? 500 : 400, userResultMessage(result));
+    sendRejected(result == UserResult::StorageError ? 500 : 400, userResultMessage(result));
   }
+}
+
+void WebUi::sendRejected(int code, const String& message) {
+  sendError(code, message);
+  notify(WebEvent::Rejected);
+}
+
+void WebUi::notify(WebEvent event) {
+  if (event_) event_(event);
 }
 
 void WebUi::scheduleReboot(uint32_t delayMs) {
@@ -186,33 +196,35 @@ void WebUi::handleUsersList() {
 
 void WebUi::handleUserAdd() {
   sendUserResult(
-      users_.add(server_.arg("name"), server_.arg("pin"), parseFlag(server_.arg("challenge"), true)));
+      users_.add(server_.arg("name"), server_.arg("pin"), parseFlag(server_.arg("challenge"), true)),
+      WebEvent::UserAdded);
 }
 
 void WebUi::handleUserUpdate() {
   int index;
   if (!parseIndex(server_.arg("index"), index)) {
-    sendUserResult(UserResult::NotFound);
+    sendUserResult(UserResult::NotFound, WebEvent::UserUpdated);
     return;
   }
   const bool current = index < users_.count() ? users_.challenge(static_cast<uint8_t>(index)) : true;
   sendUserResult(users_.update(index, server_.arg("name"), server_.arg("pin"),
-                               parseFlag(server_.arg("challenge"), current)));
+                               parseFlag(server_.arg("challenge"), current)),
+                 WebEvent::UserUpdated);
 }
 
 void WebUi::handleUserDelete() {
   int index;
   if (!parseIndex(server_.arg("index"), index)) {
-    sendUserResult(UserResult::NotFound);
+    sendUserResult(UserResult::NotFound, WebEvent::UserRemoved);
     return;
   }
-  sendUserResult(users_.remove(index));
+  sendUserResult(users_.remove(index), WebEvent::UserRemoved);
 }
 
 void WebUi::handleWifiScanStart() {
   WiFi.scanDelete();
   if (WiFi.scanNetworks(true) == WIFI_SCAN_FAILED) {
-    sendError(503, "Não foi possível procurar redes agora. Tente novamente.");
+    sendRejected(503, "Não foi possível procurar redes agora. Tente novamente.");
     return;
   }
   sendOk();
@@ -225,7 +237,7 @@ void WebUi::handleWifiScanResult() {
     return;
   }
   if (count < 0) {
-    sendError(503, "A procura de redes falhou. Tente novamente.");
+    sendRejected(503, "A procura de redes falhou. Tente novamente.");
     return;
   }
 
@@ -251,15 +263,17 @@ void WebUi::handleWifiScanResult() {
 void WebUi::handleWifiSave() {
   const char* error = settings_.setWifi(server_.arg("ssid"), server_.arg("pass"));
   if (error) {
-    sendError(400, error);
+    sendRejected(400, error);
     return;
   }
   sendOk();
+  notify(WebEvent::WifiSaved);
   wifi_.reconnect();
 }
 
 void WebUi::handleReboot() {
   sendOk();
+  notify(WebEvent::Reboot);
   scheduleReboot(1000);
 }
 
@@ -310,7 +324,7 @@ void WebUi::handleOtaDone() {
     sendOk();
     scheduleReboot(1500);
   } else if (!started) {
-    sendError(400, "Nenhum arquivo recebido.");
+    sendRejected(400, "Nenhum arquivo recebido.");
   } else {
     Serial.printf("[ota] failed: %s\n", otaError_.c_str());
     sendError(500, String("Falha na atualização: ") + otaError_);

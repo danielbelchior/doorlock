@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1100" height="840" viewBox="0 0 1100 840" font-family="Helvetica, Arial, sans-serif" font-size="15" fill="#1f2933">
 <rect width="1100" height="840" fill="#ffffff"/>
-<text x="550" y="36" text-anchor="middle" font-size="21" font-weight="bold">Doorlock keypad: wiring (firmware v2.2)</text>
+<text x="550" y="36" text-anchor="middle" font-size="21" font-weight="bold">Doorlock keypad: wiring (firmware v2.3)</text>
 <rect x="30" y="60" width="240" height="570" rx="12" fill="#ecfdf5" stroke="#34a37a" stroke-width="1.5"/>
 <text x="150" y="90" text-anchor="middle" font-size="18" font-weight="bold" fill="#065f46">Keypad 4x4</text>
 <rect x="50" y="108" width="44" height="44" rx="8" fill="#ffffff" stroke="#9ca3af"/>

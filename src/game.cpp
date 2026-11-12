@@ -38,13 +38,13 @@ void Game::update() {
       if (timeReached(deadlineMs_)) resetToPrompt();
       break;
     case State::EnterPin:
-      if (input_.length() > 0 && timeReached(lastActivityMs_ + PIN_ENTRY_TIMEOUT_MS)) resetToPrompt();
+      if (input_.length() > 0 && timeReached(lastActivityMs_ + PIN_ENTRY_TIMEOUT_MS)) timeOut();
       break;
     case State::Challenge:
-      if (timeReached(lastActivityMs_ + CHALLENGE_TIMEOUT_MS)) resetToPrompt();
+      if (timeReached(lastActivityMs_ + CHALLENGE_TIMEOUT_MS)) timeOut();
       break;
     case State::Menu:
-      if (timeReached(lastActivityMs_ + MENU_TIMEOUT_MS)) resetToPrompt();
+      if (timeReached(lastActivityMs_ + MENU_TIMEOUT_MS)) timeOut();
       break;
     case State::Busy:
       break;
@@ -56,37 +56,43 @@ void Game::handleKey(char key) {
 
   switch (state_) {
     case State::EnterPin:
-      if (key == '#') {
-        if (input_.length() > 0) submitPin();
-      } else if (key == 'D') {
-        if (input_ == MENU_CODE) openMenu();
+      if (key == '#' && input_.length() > 0) {
+        submitPin();
+      } else if (key == 'D' && input_ == MENU_CODE) {
+        openMenu();
       } else if (key == '*') {
         input_ = "";
         renderPrompt();
       } else if (appendDigit(key, USER_PIN_LEN)) {
         renderPrompt();
+      } else {
+        buzzer_.play(Sound::Invalid);
       }
       break;
 
     case State::Menu:
       if (key == '*') {
         resetToPrompt();
-      } else if (key == 'D') {
-        if (menuChoice_) runMenuChoice();
+      } else if (key == 'D' && menuChoice_) {
+        runMenuChoice();
       } else if (key >= '1' && key <= '3') {
         menuChoice_ = key;
         renderMenu();
+      } else {
+        buzzer_.play(Sound::Invalid);
       }
       break;
 
     case State::Challenge:
-      if (key == '#') {
-        if (input_.length() > 0) submitAnswer();
+      if (key == '#' && input_.length() > 0) {
+        submitAnswer();
       } else if (key == '*') {
         input_ = "";
         renderChallenge();
       } else if (appendDigit(key, ANSWER_MAX_LEN)) {
         renderChallenge();
+      } else {
+        buzzer_.play(Sound::Invalid);
       }
       break;
 
@@ -102,6 +108,7 @@ void Game::handleKey(char key) {
 
     case State::Greeting:
     case State::Busy:
+      buzzer_.play(Sound::Invalid);
       break;
   }
 }
@@ -121,6 +128,11 @@ void Game::showBusy(const Screen& screen) {
 
 void Game::endBusy() {
   if (state_ == State::Busy) resetToPrompt();
+}
+
+void Game::timeOut() {
+  buzzer_.play(Sound::Timeout);
+  resetToPrompt();
 }
 
 void Game::resetToPrompt() {
@@ -158,7 +170,7 @@ void Game::submitPin() {
     display_.show(messageScreen(TITLE_WELCOME, userName_, withChallenge ? "Prepare-se..." : "",
                                 Icon::Ok));
     led_.blink(LED_GREEN);
-    buzzer_.play(Sound::Success);
+    buzzer_.play(Sound::Welcome);
     if (withChallenge) {
       enterTimedState(State::Greeting, GREETING_MS);
     } else {
@@ -167,7 +179,7 @@ void Game::submitPin() {
   } else {
     display_.show(messageScreen("Acesso negado", "Senha invalida", "Tente de novo", Icon::Error));
     led_.blink(LED_RED);
-    buzzer_.play(Sound::Error);
+    buzzer_.play(Sound::AccessDenied);
     enterTimedState(State::Result, RESULT_MS);
   }
 }
@@ -209,12 +221,12 @@ void Game::submitAnswer() {
   if (given == answer_) {
     display_.show(messageScreen(TITLE_CHALLENGE, "Correto!", userName_, Icon::Ok));
     led_.blink(LED_GREEN);
-    buzzer_.play(Sound::Success);
+    buzzer_.play(Sound::Correct);
   } else {
     display_.show(messageScreen(TITLE_CHALLENGE, "Errado!", String("Resposta: ") + String(answer_),
                                 Icon::Error));
     led_.blink(LED_RED);
-    buzzer_.play(Sound::Error);
+    buzzer_.play(Sound::Wrong);
   }
   enterTimedState(State::Result, RESULT_MS);
 }
@@ -224,6 +236,7 @@ void Game::openMenu() {
   menuChoice_ = 0;
   state_ = State::Menu;
   led_.blink(LED_GREEN, 1);
+  buzzer_.play(Sound::MenuOpen);
   renderMenu();
 }
 

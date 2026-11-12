@@ -2,7 +2,29 @@
 
 #include <Arduino.h>
 
-enum class Sound : uint8_t { Key, Success, Error };
+// One sound per outcome. Patterns are in buzzer.cpp.
+enum class Sound : uint8_t {
+  Key,            // any key
+  Invalid,        // a key that does nothing here
+  Welcome,        // known PIN
+  AccessDenied,   // unknown PIN
+  Correct,        // right challenge answer
+  Wrong,          // wrong challenge answer
+  Timeout,        // input or menu abandoned
+  MenuOpen,
+  ShowIp,
+  Hotspot,
+  Restart,
+  Ready,          // boot finished
+  WifiConnected,
+  UserAdded,
+  UserUpdated,
+  UserRemoved,
+  WifiSaved,
+  Rejected,       // a web request failed validation or could not be done
+  UpdateDone,
+  UpdateFailed,
+};
 
 // Active buzzer (MH-FMD module). It has its own oscillator and always plays
 // the same pitch, so sounds differ only in their on/off rhythm. Driven with
@@ -17,8 +39,8 @@ class Buzzer {
   void begin();
   void update();
 
-  // Sound::Key is ignored while a success or error pattern plays, so a key
-  // press cannot cut the result feedback short. Other sounds restart.
+  // Key and Invalid are ignored while any other pattern plays, so a key
+  // press cannot cut result feedback short. Other sounds restart.
   void play(Sound sound);
   void stop();
 

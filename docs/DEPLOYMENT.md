@@ -8,7 +8,7 @@ The first flash must be over USB, because it writes the partition table with two
 
 1. Wire the parts ([hardware.md](hardware.md)).
 2. `pio run -t upload` (or Arduino IDE with **Partition Scheme > Minimal SPIFFS (1.9MB APP with OTA)**).
-3. `pio device monitor` and check for `[boot] Teclado v2.2.0` and `[users] default users created` on a fresh device.
+3. `pio device monitor` and check for `[boot] Teclado v2.3.0` and `[users] default users created` on a fresh device.
 
 If the upload does not start, hold **BOOT** while it connects.
 
@@ -31,10 +31,10 @@ Alternative: set `DEFAULT_WIFI_SSID` / `DEFAULT_WIFI_PASS` in `src/config.h` bef
    curl -F "firmware=@.pio/build/esp32dev/firmware.bin" http://keypad.local/api/update
    ```
 
-3. The display shows `Atualizando...`, then `Atualizado!` / `Reiniciando...` with green blinks and two beeps. The device reboots after about 1.5 s.
+3. The display shows `Atualizando...`, then `Atualizado!` / `Reiniciando...` with green blinks and five quick beeps. The device reboots after about 1.5 s.
 4. Check the version in the **Sistema** tab or `GET /api/status`.
 
-Safety: the image is written to the inactive slot and only activated if the whole upload and the image check succeed. A failed upload leaves the running firmware in place (red blinks, long beep, display back to the prompt).
+Safety: the image is written to the inactive slot and only activated if the whole upload and the image check succeed. A failed upload leaves the running firmware in place (red blinks, two long beeps, display back to the prompt).
 
 Rollback: there is no automatic rollback to the previous version. Upload the older `firmware.bin` the same way. Keep a copy of each released binary.
 
@@ -55,6 +55,7 @@ Rollback: there is no automatic rollback to the previous version. Upload the old
 | v1 | v2.x | Move keypad pin 7 to GPIO 25 and pin 8 to GPIO 26, flash over USB (new partition table), set up WiFi from the hotspot. Users are kept. The v1 admin login is gone. |
 | v2.0 | v2.1 | Optional: wire the buzzer (I/O 33, VCC 3V3, GND). Update over OTA. Every existing user keeps the challenge on. |
 | v2.1 | v2.2 | Replace the LCD with a 0.96" SSD1306 OLED: SDA 21, SCL 22, VCC **3V3**, GND. Update over OTA or USB (same partition table). Users and WiFi are kept. Check `TIME_ZONE` for the clock. |
+| v2.2 | v2.3 | Update over OTA or USB. Nothing to rewire; every outcome now has its own sound ([DESIGN.md](DESIGN.md#light-and-sound)). |
 
 ## Release checklist
 

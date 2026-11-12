@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1332" height="1810" viewBox="0 0 1332 1810" font-family="Helvetica, Arial, sans-serif">
 <defs><pattern id="grid" width="3" height="3" patternUnits="userSpaceOnUse"><path d="M3 0V3H0" fill="none" stroke="#05070a" stroke-width="0.9"/></pattern></defs>
 <rect width="100%" height="100%" fill="#f2f4f7"/>
-<text x="24" y="38" font-size="22" font-weight="bold" fill="#1d2939">Doorlock v2.2.0 OLED screens</text>
+<text x="24" y="38" font-size="22" font-weight="bold" fill="#1d2939">Doorlock v2.3.0 OLED screens</text>
 <text x="24" y="58" font-size="13" fill="#667085">0.96&quot; SSD1306, 128x64 pixels, shown 3x. Shapes are pixel-exact from display.cpp; text is approximated with Helvetica (the device uses U8g2 bitmap fonts).</text>
 <g transform="translate(24 82)">
 <rect width="412" height="220" rx="10" fill="#1f3b5c"/>
@@ -9,7 +9,7 @@
 <rect width="384" height="192" fill="#05070a"/>
 <g fill="#dff1ff"><rect x="348" y="3" width="3" height="3"/><rect x="351" y="6" width="3" height="3"/><rect x="375" y="6" width="9" height="3"/><rect x="354" y="9" width="3" height="3"/><rect x="375" y="9" width="3" height="3"/><rect x="381" y="9" width="3" height="3"/><rect x="357" y="12" width="3" height="3"/><rect x="375" y="12" width="3" height="3"/><rect x="381" y="12" width="3" height="3"/><rect x="360" y="15" width="12" height="3"/><rect x="375" y="15" width="3" height="3"/><rect x="381" y="15" width="3" height="3"/><rect x="363" y="18" width="9" height="3"/><rect x="375" y="18" width="3" height="3"/><rect x="381" y="18" width="3" height="3"/><rect x="363" y="21" width="3" height="3"/><rect x="369" y="21" width="3" height="3"/><rect x="375" y="21" width="3" height="3"/><rect x="381" y="21" width="3" height="3"/><rect x="351" y="24" width="9" height="3"/><rect x="363" y="24" width="3" height="3"/><rect x="369" y="24" width="9" height="3"/><rect x="381" y="24" width="3" height="3"/><rect x="351" y="27" width="3" height="3"/><rect x="357" y="27" width="3" height="3"/><rect x="363" y="27" width="3" height="3"/><rect x="369" y="27" width="3" height="3"/><rect x="375" y="27" width="3" height="3"/><rect x="381" y="27" width="3" height="3"/><rect x="351" y="30" width="9" height="3"/><rect x="363" y="30" width="9" height="3"/><rect x="375" y="30" width="9" height="3"/><rect x="381" y="33" width="3" height="3"/><rect x="0" y="39" width="384" height="3"/></g>
 <text x="0" y="30" font-size="33.3" font-weight="bold" fill="#dff1ff" textLength="126" lengthAdjust="spacingAndGlyphs">Teclado</text>
-<text x="111" y="117" font-size="58.5" font-weight="bold" fill="#dff1ff" textLength="162" lengthAdjust="spacingAndGlyphs">v2.2.0</text>
+<text x="111" y="117" font-size="58.5" font-weight="bold" fill="#dff1ff" textLength="162" lengthAdjust="spacingAndGlyphs">v2.3.0</text>
 <text x="87" y="162" font-size="41.7" fill="#dff1ff" textLength="207" lengthAdjust="spacingAndGlyphs">Iniciando...</text>
 <rect width="384" height="192" fill="url(#grid)"/>
 </g>
@@ -92,7 +92,7 @@
 <rect width="384" height="192" fill="url(#grid)"/>
 </g>
 <text x="2" y="240" font-size="15" font-weight="bold" fill="#1d2939">Result, correct</text>
-<text x="2" y="258" font-size="12.5" fill="#667085">Green blinks, two beeps</text>
+<text x="2" y="258" font-size="12.5" fill="#667085">Green blinks, 4 beeps</text>
 </g>
 <g transform="translate(24 662)">
 <rect width="412" height="220" rx="10" fill="#1f3b5c"/>
@@ -106,7 +106,7 @@
 <rect width="384" height="192" fill="url(#grid)"/>
 </g>
 <text x="2" y="240" font-size="15" font-weight="bold" fill="#1d2939">Result, wrong</text>
-<text x="2" y="258" font-size="12.5" fill="#667085">Red blinks, long beep</text>
+<text x="2" y="258" font-size="12.5" fill="#667085">Red blinks, 2 medium beeps</text>
 </g>
 <g transform="translate(460 662)">
 <rect width="412" height="220" rx="10" fill="#1f3b5c"/>

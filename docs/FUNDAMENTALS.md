@@ -6,7 +6,7 @@ Start here. This page explains what Doorlock is, what it is not, and the few ide
 
 Doorlock is a toy for a home: an ESP32 with a 4x4 keypad, a 0.96" OLED display, an RGBW LED and an active buzzer. People type a PIN. If the PIN belongs to someone, the display greets them by name. Users who have the math challenge turned on then answer a random math question. Everything is managed from a web page served by the ESP32 itself.
 
-- Firmware version: `2.2.0` (`FIRMWARE_VERSION` in `src/config.h`).
+- Firmware version: `2.3.0` (`FIRMWARE_VERSION` in `src/config.h`).
 - Board: ESP32 DevKit ("ESP32 Dev Module", PlatformIO env `esp32dev`).
 - Framework: Arduino on the ESP32 core, built with PlatformIO (Arduino IDE also works).
 - Language: C++17 for the firmware; HTML, CSS and plain JavaScript for the web page, embedded in the firmware.
@@ -21,7 +21,7 @@ Doorlock is a toy for a home: an ESP32 with a 4x4 keypad, a 0.96" OLED display, 
 1. The display shows `Digite a senha` and 8 empty slots.
 2. The person types digits (shown as dots) and presses `#`.
 3. Unknown PIN: `Acesso negado` / `Senha invalida`, red blinks, one long beep, then back to step 1.
-4. Known PIN: `Bem-vindo(a)!` and the name, green blinks, two quick beeps.
+4. Known PIN: `Bem-vindo(a)!` and the name, green blinks, two quick beeps. Every other outcome (right or wrong answer, menu, web changes, timeouts) has its own rhythm too; see [DESIGN.md](DESIGN.md#light-and-sound).
    - Challenge on: after 1.5 s the display asks something like `256 + 139`. The answer is typed and confirmed with `#`. Correct gives `Correto!`, wrong gives `Errado!` and the right answer.
    - Challenge off: the welcome stays for 3 s, then back to step 1.
 

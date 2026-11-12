@@ -25,7 +25,8 @@ docs/                     Documentation and SVG diagrams
 - Global objects, in dependency order: `keypad`, `display`, `led`, `buzzer`, `users`, `settings`, `wifi(settings)`, `game(display, led, buzzer, users)`, `web(users, settings, wifi)`.
 - `showNetworkInfo(ms)`: a `Rede WiFi` notice with the IP and `keypad.local`, `Sem WiFi` / `Nao configurado` (error icon), or `Sem WiFi` / `Conectando...`.
 - `handleMenuAction(MenuAction)`: hotspot, show IP, restart (sets `restartPending`).
-- `handleWifiEvents()`: shows the IP on `Event::Connected` if `game.isIdle()`.
+- `handleWifiEvents()`: shows the IP on `Event::Connected` if `game.isIdle()`, and plays `Sound::WifiConnected` unless the screen is off for the night.
+- `soundFor(WebEvent)`: maps web outcomes to sounds; registered with `web.onEvent()`. `handleMenuAction()` plays `Hotspot`, `ShowIp` or `Restart`, and `setup()` ends with `Sound::Ready`.
 - `updateDisplayStatus()`: runs once a second from `loop()`. Sets the header network icon (`NetStatus::Online`, `Offline`, `Hotspot`) and, once NTP has synced, the `HH:MM` clock. Turns the panel off with `display.setAsleep()` during quiet hours while `game.restingFor(DISPLAY_NIGHT_WAKE_MS)`.
 - `inQuietHours(hour)`: true between `DISPLAY_OFF_HOUR` and `DISPLAY_ON_HOUR`, also when the window crosses midnight; always false when the two are equal.
 - `setup()` calls `configTzTime(TIME_ZONE, NTP_SERVER_1, NTP_SERVER_2)` after `wifi.begin()`. It does not call `Wire.begin()`: `display.begin()` starts I2C.
@@ -85,7 +86,7 @@ Every change redraws the full 1 KB frame buffer and sends it only when something
 
 ## `src/buzzer.*`
 
-`enum class Sound { Key, Success, Error }`. `Buzzer::play(Sound)` starts a pattern of `Step {bool on; uint16_t ms;}`; `Key` is ignored while a `Success` or `Error` pattern plays. `stop()` silences at once. `update()` advances steps. Patterns are `KEY_STEPS`, `SUCCESS_STEPS`, `ERROR_STEPS` at the top of `buzzer.cpp`. The pin level for "on" comes from `BUZZER_ACTIVE_LOW`.
+`enum class Sound` has one value per outcome (`Key`, `Invalid`, `Welcome`, `AccessDenied`, `Correct`, `Wrong`, `Timeout`, `MenuOpen`, `ShowIp`, `Hotspot`, `Restart`, `Ready`, `WifiConnected`, `UserAdded`, `UserUpdated`, `UserRemoved`, `WifiSaved`, `Rejected`, `UpdateDone`, `UpdateFailed`). `Buzzer::play(Sound)` starts a pattern of `Step {bool on; uint16_t ms;}`; the clicks `Key` and `Invalid` are ignored while any other pattern plays. `stop()` silences at once. `update()` advances steps. The `*_STEPS` arrays at the top of `buzzer.cpp` are built from the blocks `S`, `M`, `L` (beeps) and `G` (gap); `patternFor()` maps a `Sound` to its array. The pin level for "on" comes from `BUZZER_ACTIVE_LOW`. Rhythm table in [firmware.md](firmware.md#buzzer).
 
 ## `src/users.*`
 
@@ -114,7 +115,7 @@ Returns `UserResult` (`Ok`, `InvalidName`, `InvalidPin`, `DuplicatePin`, `Full`,
 
 ## `src/web_ui.*`
 
-`WebUi::begin()` registers routes; `update()` serves one client and handles the delayed reboot. Helpers in an anonymous namespace: `jsonString()` (escaping), `jsonBool()`, `parseIndex()` (strict 1 to 3 digits), `parseFlag()` (`1/true/on`, `0/false/off`, else fallback). Route table in [API.md](API.md).
+`WebUi::begin()` registers routes; `update()` serves one client and handles the delayed reboot. `onEvent(handler)` reports `WebEvent` outcomes (`UserAdded`, `UserUpdated`, `UserRemoved`, `WifiSaved`, `Rejected`, `Reboot`); `sendUserResult(result, successEvent)` and `sendRejected(code, message)` send the response and report the event. OTA results go to `onOtaEnd` instead. Helpers in an anonymous namespace: `jsonString()` (escaping), `jsonBool()`, `parseIndex()` (strict 1 to 3 digits), `parseFlag()` (`1/true/on`, `0/false/off`, else fallback). Route table in [API.md](API.md).
 
 ## `src/web_page.h`
 

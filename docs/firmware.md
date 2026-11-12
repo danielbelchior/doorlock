@@ -119,7 +119,7 @@ stateDiagram-v2
 
 | State | Title / Main text / Detail | Keys |
 |---|---|---|
-| Boot | `Teclado` / `v2.2.0` / `Iniciando...` | not read yet |
+| Boot | `Teclado` / `v2.3.0` / `Iniciando...` | not read yet |
 | `EnterPin` | `Digite a senha` / 8 slots, a big dot per typed digit / footer `# Entrar`, `* Apagar` | digits, `#`, `*` |
 | `Greeting` | `Bem-vindo(a)!` / user name / `Prepare-se...` (check icon) | ignored |
 | `Challenge` | `Desafio` / `256 + 139` / `= ` and the typed answer with a `_` cursor; footer `# Responder`, `* Apagar` | digits, `#`, `*` |
@@ -158,15 +158,34 @@ A key press does not interrupt a running green or red blink. (In v1 it did.) Yel
 
 ## Buzzer
 
-| Event | Sound |
-|---|---|
-| Any key | Short click, 30 ms |
-| Correct PIN or correct answer, firmware update succeeded | Two quick beeps: 70 ms on, 70 ms off, 70 ms on |
-| Wrong PIN or wrong answer, firmware update failed | One long beep, 600 ms |
+S = short beep (60 ms), M = medium beep (250 ms), L = long beep (600 ms); beeps are separated by 80 ms of silence.
+
+| Event | `Sound` | Rhythm |
+|---|---|---|
+| Any key | `Key` | Click, 30 ms |
+| Key that does nothing there (see [DESIGN.md](DESIGN.md#light-and-sound)) | `Invalid` | Two clicks (30 on, 60 off, 30 on) |
+| Known PIN | `Welcome` | S S |
+| Unknown PIN | `AccessDenied` | L |
+| Correct answer | `Correct` | S S S M |
+| Wrong answer | `Wrong` | M M |
+| Half-typed PIN, challenge or menu times out | `Timeout` | M S |
+| Menu opened | `MenuOpen` | S S S |
+| Menu 1, hotspot | `Hotspot` | S M S |
+| Menu 2, show IP | `ShowIp` | S M |
+| Menu 3 or web restart | `Restart` | S S L (ends before the restart, 1 s later) |
+| Boot finished | `Ready` | S S S S |
+| WiFi connected while idle, not while the screen is off at night | `WifiConnected` | S S M |
+| Web: user added | `UserAdded` | S M M |
+| Web: user edited | `UserUpdated` | M S M |
+| Web: user removed | `UserRemoved` | M M S |
+| Web: WiFi saved | `WifiSaved` | M S S |
+| Web: any request answered with an error (except a failed firmware upload) | `Rejected` | M M M |
+| Firmware update done | `UpdateDone` | S S S S S (ends before the reboot, 1.5 s later) |
+| Firmware update failed | `UpdateFailed` | L L |
 
 The buzzer is an active one: it has its own oscillator and always plays the same pitch, so the sounds differ only in rhythm. The firmware just switches GPIO 33 with `digitalWrite()`; no PWM and no library are involved. Do not drive it with `tone()` or PWM, which only makes an active buzzer crackle.
 
-Like the LED, a key click does not interrupt a success or error pattern, while a new pattern replaces the one playing. The `#` key first clicks and then immediately plays the result pattern. The patterns are the arrays at the top of `src/buzzer.cpp`.
+Like the LED, a click (`Key` or `Invalid`) does not interrupt any other sound, while any other sound replaces the one playing. The `#` key first clicks and then immediately plays the result. Web actions reach the buzzer through `WebUi::onEvent()`; `main.cpp` maps each `WebEvent` to a `Sound`. The patterns are the arrays at the top of `src/buzzer.cpp`, and no two may share a rhythm.
 
 ## WiFi behavior
 
@@ -230,7 +249,7 @@ These rules keep the firmware reliable. They also give an AI assistant or a new 
 11. Turn the router off for a few minutes: no hotspot appears. Turn it back on: the device reconnects by itself.
 12. Upload a new `firmware.bin`: the progress bar fills, the display shows `Atualizando...`, and the device reboots into the new version (check the version in the Sistema tab).
 13. Any key lights the LED yellow for about 250 ms and makes a short click.
-14. A correct PIN or answer gives two quick beeps; a wrong one gives one long beep. Keys pressed during a pattern do not cut it.
+14. Every outcome plays the rhythm listed in [Buzzer](#buzzer): known and unknown PIN, right and wrong answer, invalid keys, timeouts, menu actions, web actions, boot and WiFi connected. Keys pressed during a pattern do not cut it.
 15. Uncheck **Fazer o desafio de matemática** for a user: their PIN shows `Bem-vindo(a)!` and the name for 3 s and returns to the prompt, with no math question. Check it again: the challenge comes back. The setting survives a reboot.
 16. The buzzer is silent between sounds (no hum).
 17. The header clock appears after WiFi connects; the network icon changes between connected, offline and hotspot.

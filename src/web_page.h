@@ -101,7 +101,7 @@ progress{display:block;width:100%;height:12px;margin:0 0 14px}
    </div>
    <form id="userForm" class="card" autocomplete="off">
     <h2 id="formTitle">Adicionar usuário</h2>
-    <label>Nome<input id="uName" maxlength="16" required></label>
+    <label>Nome<input id="uName" maxlength="16" required autocapitalize="words" autocorrect="off" spellcheck="false"></label>
     <p class="hint">Até 16 caracteres, sem acentos (a tela do teclado não os mostra).</p>
     <label>Senha<input id="uPin" maxlength="8" required inputmode="numeric" pattern="[0-9]{1,8}"></label>
     <p class="hint">1 a 8 dígitos, diferente da senha dos outros usuários.</p>
@@ -174,6 +174,13 @@ function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 }
 function dots(n) { return '\u2022'.repeat(n); }
+// Phone keyboards autocorrect to accented words and smart quotes (Joao -> Jo\u00e3o),
+// but the device only accepts ASCII names.
+function asciiName(s) {
+  return s.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u2018\u2019\u201a\u201b\u2032]/g, "'").replace(/[\u201c\u201d\u201e\u2033]/g, '"')
+    .replace(/[\u2010-\u2015]/g, '-').replace(/\s+/g, ' ').trim();
+}
 
 function toast(msg, bad) {
   const t = $('#toast');
@@ -286,7 +293,8 @@ $('#uCancel').onclick = resetForm;
 
 $('#userForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const data = {name: $('#uName').value.trim(), pin: $('#uPin').value.trim(), challenge: $('#uChallenge').checked ? 1 : 0};
+  $('#uName').value = asciiName($('#uName').value);
+  const data = {name: $('#uName').value, pin: $('#uPin').value.trim(), challenge: $('#uChallenge').checked ? 1 : 0};
   const btn = $('#uSubmit');
   btn.disabled = true;
   try {

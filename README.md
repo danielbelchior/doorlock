@@ -11,7 +11,7 @@ An ESP32 project for fun. People type a PIN on a 4x4 keypad. If the PIN belongs 
 - **Keypad game:** PIN entry with masked digits, a greeting, then a random addition, subtraction or multiplication challenge.
 - **Math challenge per user:** each user has an option to do the challenge or not. Without it, the keypad only greets the user by name.
 - **LED feedback:** yellow flash on every key, 3 green blinks for a correct PIN or answer, 3 red blinks for a wrong one.
-- **Sound feedback:** an MH-FMD active buzzer clicks on every key, beeps twice quickly for a correct PIN or answer, and gives one long beep for a wrong one. It is switched with `digitalWrite()`, so it needs no extra library.
+- **Sound feedback:** an MH-FMD active buzzer clicks on every key and plays its own rhythm for every outcome: known or unknown PIN, right or wrong answer, timeouts, menu actions, web changes (user added, edited or removed, WiFi saved, request rejected), boot, WiFi connected and firmware updates. It is switched with `digitalWrite()`, so it needs no extra library. The full list is in [docs/DESIGN.md](docs/DESIGN.md#light-and-sound).
 - **Web page (Portuguese UI), no login:** add, edit and remove users, and choose who does the math challenge; choose a WiFi network; install firmware updates; restart. The layout adapts to phones, tablets (two columns from 768 px) and desktops, with large touch targets and dark mode.
 - **Keypad menu:** type `2205` then `D` to open a menu on the display: open the setup hotspot, show the IP address, or restart.
 - **WiFi setup hotspot:** an open `Teclado-XXXX` network with a captive portal. It starts only from the keypad menu, never by itself.

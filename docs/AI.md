@@ -6,7 +6,7 @@ Read this before changing anything. It is the short version of the other documen
 
 - ESP32 (Arduino, PlatformIO env `esp32dev`) toy keypad: PIN, greeting, optional per-user math challenge, 128x64 OLED, RGBW LED, active buzzer.
 - Web page and JSON API served by the ESP32 (no login), WiFi setup hotspot from the keypad menu, OTA updates.
-- Firmware `2.2.0`. Code in `src/`, docs in `docs/`, overview in `README.md`.
+- Firmware `2.3.0`. Code in `src/`, docs in `docs/`, overview in `README.md`.
 - No automated tests; verification is static checks, a build, and a manual checklist ([TESTING.md](TESTING.md)).
 - Owner's language for UI text is Portuguese; everything else English.
 
@@ -72,7 +72,8 @@ Recipes for common changes: [DEVELOPMENT.md](DEVELOPMENT.md#how-to-make-common-c
 
 - `UserStore::update()` and `add()` take `withChallenge`; the web layer must pass the current value when the parameter is missing on update.
 - `UserStore::remove()` must shift `challenge_` together with `users_`.
-- `Buzzer::play(Sound::Key)` is ignored during a result pattern, on purpose. The `#` key plays the click first and then the result pattern replaces it.
+- `Buzzer::play(Sound::Key)` and `Sound::Invalid` are ignored while any other pattern plays, on purpose. The `#` key plays the click first and then the result pattern replaces it.
+- Every `Sound` must keep a rhythm no other sound uses, `Restart` must end within 1 s and `UpdateDone` within 1.5 s (the reboot delays).
 - `Game::isIdle()` decides whether a WiFi notice may interrupt the screen; keep it true only when nothing is being typed.
 - During OTA the loop stops; `Buzzer::stop()` is called at upload start so a beep cannot stay on.
 - `String::toInt()` returns 0 for garbage; use the strict `parseIndex()` for indexes.
@@ -83,6 +84,7 @@ Recipes for common changes: [DEVELOPMENT.md](DEVELOPMENT.md#how-to-make-common-c
 
 ## Current state and open ideas
 
+- Done in v2.3: a distinct sound for every outcome (keypad results, invalid keys, timeouts, menu actions, web actions through `WebUi::onEvent`, boot, WiFi connected, OTA). Not built (no PlatformIO); `buzzer.cpp` and `game.cpp` compiled and ran on the host with stub headers; `main.cpp` and `web_ui.cpp` reviewed by reading. Not tested on hardware.
 - Done in v2.2: 0.96" SSD1306 OLED (U8g2) instead of the 16x2 LCD, a new screen design (header with clock and network icon, icons, key hints), header clock from NTP, and the night screen-off.
 - v2.2 was not built: PlatformIO was not installed. `display.cpp`, `game.cpp`, `users.cpp`, `led.cpp` and `buzzer.cpp` compiled and ran on the host with stub headers (that run produced `docs/oled-screens.svg`). `main.cpp`, `web_ui.cpp` and `wifi_service.cpp` were only reviewed by reading. Nothing was tested on hardware. Treat the first real build and the manual checklist as part of the next change.
 - Done in v2.1: per-user math challenge option; MH-FMD active buzzer feedback. Also not verified on hardware in the session that added them.

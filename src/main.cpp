@@ -58,12 +58,15 @@ void handleMenuAction(MenuAction action) {
     case MenuAction::Hotspot:
       wifi.startHotspot();
       game.showNotice(messageScreen("Hotspot", wifi.apSsid(), wifi.apIp()), HOTSPOT_INFO_MS);
+      buzzer.play(Sound::Hotspot);
       break;
     case MenuAction::ShowIp:
       showNetworkInfo(MENU_INFO_MS);
+      buzzer.play(Sound::ShowIp);
       break;
     case MenuAction::Restart:
       game.showBusy(messageScreen("Sistema", "Reiniciando..."));
+      buzzer.play(Sound::Restart);
       restartPending = true;
       restartAtMs = millis() + 1000;
       break;
@@ -73,8 +76,30 @@ void handleMenuAction(MenuAction action) {
 void handleWifiEvents() {
   WifiService::Event event;
   while ((event = wifi.takeEvent()) != WifiService::Event::None) {
-    if (event == WifiService::Event::Connected && game.isIdle()) showNetworkInfo(NOTICE_MS);
+    if (event == WifiService::Event::Connected && game.isIdle()) {
+      // A router reboot at night must not wake the house.
+      if (!display.asleep()) buzzer.play(Sound::WifiConnected);
+      showNetworkInfo(NOTICE_MS);
+    }
   }
+}
+
+Sound soundFor(WebEvent event) {
+  switch (event) {
+    case WebEvent::UserAdded:
+      return Sound::UserAdded;
+    case WebEvent::UserUpdated:
+      return Sound::UserUpdated;
+    case WebEvent::UserRemoved:
+      return Sound::UserRemoved;
+    case WebEvent::WifiSaved:
+      return Sound::WifiSaved;
+    case WebEvent::Rejected:
+      return Sound::Rejected;
+    case WebEvent::Reboot:
+      return Sound::Restart;
+  }
+  return Sound::Rejected;
 }
 
 bool inQuietHours(int hour) {
@@ -134,18 +159,20 @@ void setup() {
     if (success) {
       game.showBusy(messageScreen("Firmware", "Atualizado!", "Reiniciando...", Icon::Ok));
       led.blink(LED_GREEN);
-      buzzer.play(Sound::Success);
+      buzzer.play(Sound::UpdateDone);
     } else {
       game.endBusy();
       led.blink(LED_RED);
-      buzzer.play(Sound::Error);
+      buzzer.play(Sound::UpdateFailed);
     }
   });
+  web.onEvent([](WebEvent event) { buzzer.play(soundFor(event)); });
   web.begin();
 
   game.onMenuAction(handleMenuAction);
   game.begin();
   if (!settings.hasWifi()) showNetworkInfo(NOTICE_MS);
+  buzzer.play(Sound::Ready);
 }
 
 void loop() {

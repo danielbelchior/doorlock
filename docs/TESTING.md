@@ -87,28 +87,31 @@ Game, light and sound:
 
 7. Any key: yellow LED for about 250 ms and a short click.
 8. `1234 #`: `Bem-vindo(a)!` / `Daniel` with a check icon, 3 green blinks, two quick beeps, then a challenge.
-9. Correct answer: `Correto!`, green blinks, two beeps. Wrong answer: `Errado!` and `Resposta: <answer>`, red blinks, one long beep.
+9. Correct answer: `Correto!`, green blinks, three short beeps and a medium one. Wrong answer: `Errado!` and `Resposta: <answer>`, red blinks, two medium beeps.
 10. `9999 #`: `Acesso negado` / `Senha invalida`, red blinks, one long beep, back to the prompt after 3 s.
 11. Keys pressed during a blink or a beep pattern do not cut it.
-12. The buzzer is silent between sounds, also right after boot.
+12. The buzzer is silent between sounds. At the end of boot it plays four quick beeps.
+13. `#` on an empty prompt, `A`, `12 D`, or a 9th PIN digit: a double click. Type `3` and wait 20 s: medium then short beep (timeout).
+14. `2205 D`: three quick beeps. Then `1 D`, `2 D`, `3 D` each have their own rhythm (S M S, S M, S S L); see [DESIGN.md](DESIGN.md#light-and-sound).
+15. From the web page: add, edit and remove a user, save WiFi, and submit a duplicate PIN. Each gives a different rhythm; the duplicate gives three medium beeps.
 
 Users and challenge option:
 
-13. Add, edit and remove users; a duplicate PIN is rejected; changes survive a reboot.
-14. Uncheck **Fazer o desafio de matemática** for a user: the list shows **Sem desafio**; their PIN shows the welcome for 3 s and returns to the prompt with no question. Check it again: the question returns. The option survives a reboot and moves correctly when a user above is removed.
+16. Add, edit and remove users; a duplicate PIN is rejected; changes survive a reboot.
+17. Uncheck **Fazer o desafio de matemática** for a user: the list shows **Sem desafio**; their PIN shows the welcome for 3 s and returns to the prompt with no question. Check it again: the question returns. The option survives a reboot and moves correctly when a user above is removed.
 
 Updates:
 
-15. Upload a new `firmware.bin`: progress bar, `Atualizando...`, reboot into the new version (check **Sistema**).
-16. Upload a random non-firmware file: error toast, red blinks, long beep, the old firmware keeps running.
-17. Upgrade from v2.0 with existing users: every user shows **Com desafio**.
+18. Upload a new `firmware.bin`: progress bar, `Atualizando...`, reboot into the new version (check **Sistema**).
+19. Upload a random non-firmware file: error toast, red blinks, two long beeps, the old firmware keeps running.
+20. Upgrade from v2.0 with existing users: every user shows **Com desafio**.
 
 Display:
 
-18. The header clock (`HH:MM`) appears a few seconds after WiFi connects and matches local time. Without WiFi there is no clock.
-19. The network icon shows filled bars when connected, outlined bars with a slash when offline, and an `AP` badge while the hotspot is on (menu `1 D`).
-20. Set `DISPLAY_OFF_HOUR` and `DISPLAY_ON_HOUR` around the current hour (for example 14 and 15 at 14:20) and flash. At the empty PIN prompt the screen turns off after 30 s without a key. A key wakes it and is typed. The screen does not turn off while a PIN is half-typed or on another screen.
-21. Long names shrink to a smaller font; no screen shows accented or broken characters.
+21. The header clock (`HH:MM`) appears a few seconds after WiFi connects and matches local time. Without WiFi there is no clock.
+22. The network icon shows filled bars when connected, outlined bars with a slash when offline, and an `AP` badge while the hotspot is on (menu `1 D`).
+23. Set `DISPLAY_OFF_HOUR` and `DISPLAY_ON_HOUR` around the current hour (for example 14 and 15 at 14:20) and flash. At the empty PIN prompt the screen turns off after 30 s without a key. A key wakes it and is typed. The screen does not turn off while a PIN is half-typed or on another screen.
+24. Long names shrink to a smaller font; no screen shows accented or broken characters.
 
 ## Reporting
 

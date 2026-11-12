@@ -54,7 +54,7 @@ Each module owns one piece of hardware or one concern. Only `main.cpp` knows abo
 Rules that keep this shape:
 
 - `Game` never touches WiFi or the web server. It reports menu choices through the `onMenuAction` callback and `main.cpp` acts on them.
-- `WebUi` never touches the display. It reports OTA progress through `onOtaStart` / `onOtaEnd` and `main.cpp` updates the display, LED and buzzer.
+- `WebUi` never touches the display or the buzzer. It reports OTA progress through `onOtaStart` / `onOtaEnd` and other outcomes through `onEvent`, and `main.cpp` updates the display, LED and buzzer.
 - `Display` knows nothing about WiFi, time or game states. `Game` gives it a `Screen`; `main.cpp` gives it the network status, the clock text and the sleep flag.
 - `WifiService` reports connection changes as events (`takeEvent()`), polled by `main.cpp`.
 
@@ -105,11 +105,11 @@ States are `Game::State`: `EnterPin`, `Greeting`, `Challenge`, `Result`, `Notice
 
 ## Data flows
 
-**Key press.** `keypad.getKey()` returns a char. `main.cpp` flashes the LED yellow and plays the key click, then `Game::handleKey()` acts by state. On `#` in `EnterPin`, `Game::submitPin()` asks `UserStore::findByPin()`. On success it copies the name, reads `UserStore::challenge(index)` and chooses `Greeting` or `Result`. Result feedback (`StatusLed::blink`, `Buzzer::play(Success/Error)`) replaces the key click.
+**Key press.** `keypad.getKey()` returns a char. `main.cpp` flashes the LED yellow and plays the key click, then `Game::handleKey()` acts by state. On `#` in `EnterPin`, `Game::submitPin()` asks `UserStore::findByPin()`. On success it copies the name, reads `UserStore::challenge(index)` and chooses `Greeting` or `Result`. Result feedback (`StatusLed::blink`, `Buzzer::play(Welcome/AccessDenied/Correct/Wrong)`) replaces the key click. A key that does nothing in the current state plays `Sound::Invalid`.
 
 **Clock and night screen-off.** `setup()` calls `configTzTime(TIME_ZONE, NTP_SERVER_1, NTP_SERVER_2)` after `wifi.begin()`; the ESP32 core syncs the time in the background once WiFi is up. Once a second, `updateDisplayStatus()` sets the header network icon and, after the first sync, the `HH:MM` clock. Between `DISPLAY_OFF_HOUR` and `DISPLAY_ON_HOUR` it turns the panel off while `Game::restingFor(DISPLAY_NIGHT_WAKE_MS)` is true (empty PIN prompt, no key for 30 s). A key turns the panel on in `loop()` and is still passed to `Game::handleKey()`. Before the first sync the clock is hidden and the panel never turns off.
 
-**Web request.** The browser loads `/` (the embedded page), then calls `/api/*` with `fetch`. `WebUi` validates input through `UserStore` or `Settings`, which save to NVS and return a result code. `WebUi` turns it into JSON. See [API.md](API.md).
+**Web request.** The browser loads `/` (the embedded page), then calls `/api/*` with `fetch`. `WebUi` validates input through `UserStore` or `Settings`, which save to NVS and return a result code. `WebUi` turns it into JSON and reports a `WebEvent` through `onEvent`, which `main.cpp` turns into a sound. See [API.md](API.md).
 
 **OTA.** `/api/update` receives a multipart upload in chunks (`handleOtaUpload`), writes it with `Update` into the inactive app slot, then `handleOtaDone` answers and schedules a reboot 1.5 s later.
 

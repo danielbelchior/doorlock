@@ -10,11 +10,15 @@
 class Settings;
 class WifiService;
 
+// Outcomes of web actions, reported so main.cpp can give sound feedback.
+enum class WebEvent : uint8_t { UserAdded, UserUpdated, UserRemoved, WifiSaved, Rejected, Reboot };
+
 // Web UI and JSON API. No login: this is a toy on a home network.
 class WebUi {
  public:
   using OtaStartHandler = std::function<void()>;
   using OtaEndHandler = std::function<void(bool success)>;
+  using EventHandler = std::function<void(WebEvent)>;
 
   WebUi(UserStore& users, Settings& settings, WifiService& wifi);
 
@@ -23,12 +27,16 @@ class WebUi {
 
   void onOtaStart(OtaStartHandler handler) { otaStart_ = handler; }
   void onOtaEnd(OtaEndHandler handler) { otaEnd_ = handler; }
+  // Not called for OTA results; those go to onOtaEnd().
+  void onEvent(EventHandler handler) { event_ = handler; }
 
  private:
   void sendJson(int code, const String& body);
   void sendOk();
   void sendError(int code, const String& message);
-  void sendUserResult(UserResult result);
+  void sendUserResult(UserResult result, WebEvent success);
+  void sendRejected(int code, const String& message);
+  void notify(WebEvent event);
   void scheduleReboot(uint32_t delayMs);
 
   void handleIndex();
@@ -52,6 +60,7 @@ class WebUi {
 
   OtaStartHandler otaStart_;
   OtaEndHandler otaEnd_;
+  EventHandler event_;
   bool otaStarted_ = false;
   String otaError_;
 

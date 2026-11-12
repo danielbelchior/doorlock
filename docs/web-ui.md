@@ -78,7 +78,7 @@ Example `/api/status` response:
 
 ```json
 {
-  "version": "2.2.0",
+  "version": "2.3.0",
   "uptime": 93784,
   "heap": 182340,
   "hostname": "keypad",

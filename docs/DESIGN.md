@@ -42,7 +42,7 @@ The frame is sent to the panel only when something changed. Text is ASCII only, 
 
 | State | Title | Main text | Detail | Icon | Footer | Leaves after |
 |---|---|---|---|---|---|---|
-| Boot | `Teclado` | `v2.2.0` | `Iniciando...` | | | setup ends |
+| Boot | `Teclado` | `v2.3.0` | `Iniciando...` | | | setup ends |
 | `EnterPin` | `Digite a senha` | Pin layout, one dot per digit | | | `# Entrar`, `* Apagar` | half-typed input clears after 20 s |
 | `Greeting` | `Bem-vindo(a)!` | name | `Prepare-se...` | check | | 1.5 s, then the challenge |
 | `Challenge` | `Desafio` | `256 + 139` | `= ` + typed answer + `_` | | `# Responder`, `* Apagar` | `#`, or 60 s idle |
@@ -65,12 +65,29 @@ Challenge operands: addition `a, b` in [100, 500); subtraction `a` in [200, 900)
 
 ## Light and sound
 
+Every outcome has its own rhythm. Building blocks: **S** = short beep (60 ms), **M** = medium beep (250 ms), **L** = long beep (600 ms), with 80 ms of silence between beeps.
+
 | Event | LED | Buzzer (active, fixed pitch) |
 |---|---|---|
-| Any key | Yellow 250 ms | Click 30 ms |
-| Correct PIN or answer, OTA success | 3 green blinks | Two quick beeps (70 on, 70 off, 70 on) |
-| Wrong PIN or answer, OTA failure | 3 red blinks | One long beep, 600 ms |
-| Menu opened | 1 green blink | Key click only |
+| Any key | Yellow 250 ms | Click, 30 ms |
+| Key that does nothing there | Yellow 250 ms | Two clicks |
+| Known PIN (welcome) | 3 green blinks | S S |
+| Unknown PIN | 3 red blinks | L |
+| Correct answer | 3 green blinks | S S S M |
+| Wrong answer | 3 red blinks | M M |
+| Half-typed PIN, unanswered challenge or open menu times out | | M S |
+| Menu opened | 1 green blink | S S S |
+| Menu 1 (hotspot) | | S M S |
+| Menu 2 (show IP) | | S M |
+| Restart (menu 3 or web page) | | S S L |
+| Boot finished | | S S S S |
+| WiFi connected while idle (silent while the screen is off at night) | | S S M |
+| Web: user added / edited / removed | | S M M / M S M / M M S |
+| Web: WiFi saved | | M S S |
+| Web: request rejected (invalid name or PIN, duplicate PIN, full list, bad WiFi data, scan failure, no file) | | M M M |
+| Firmware update done / failed | 3 green / 3 red blinks | S S S S S / L L |
+
+A "key that does nothing" is `#` with nothing typed, `D` without the menu code (or in the menu without a chosen row), `A` to `C`, a digit past the length limit, a menu digit other than `1` to `3`, and any key during the greeting or while busy. Clicks never cut another sound short; any other sound replaces the one playing.
 
 The buzzer is active, so it cannot change pitch: sounds differ by rhythm only. Yellow is `(255, 160, 0)` because full green makes the SK6812 look green.
 

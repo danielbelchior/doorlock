@@ -71,7 +71,7 @@ Short records of choices that shape the project. Each entry says what was decide
 
 ## D12. Active buzzer with on/off patterns (v2.1)
 
-- **Decision:** the MH-FMD module in use carries an active buzzer, so the firmware drives it with `digitalWrite()` and sounds differ by rhythm (click, two quick beeps, one long beep).
+- **Decision:** the MH-FMD module in use carries an active buzzer, so the firmware drives it with `digitalWrite()` and sounds differ by rhythm. (v2.3 gives every outcome its own rhythm, see D18.)
 - **Supersedes:** the first v2.1 draft, which assumed a passive buzzer and played melodies through the ESP-IDF LEDC driver.
 - **Why:** an active buzzer has its own oscillator; PWM only makes it crackle.
 - **Cost:** no pitch changes.
@@ -106,3 +106,9 @@ Short records of choices that shape the project. Each entry says what was decide
 - **Decision:** from `DISPLAY_OFF_HOUR` to `DISPLAY_ON_HOUR` (00:00 to 08:00) the panel turns off when the PIN prompt is empty and no key was pressed for 30 s. Local time comes from NTP through `configTzTime()` in the ESP32 core; no RTC module and no extra library.
 - **Why:** an OLED that shows the same static prompt all night burns in. Nobody uses the keypad at night, so the screen can be dark then.
 - **Cost:** the clock needs WiFi. Without it (or before the first sync) the screen stays on all night and the header has no clock. At night the first key both wakes the screen and is typed as a digit.
+
+## D18. One rhythm per outcome (v2.3)
+
+- **Decision:** every keypad, menu, web and system outcome plays its own rhythm, built from short, medium and long beeps. Clicks (`Key`, `Invalid`) never interrupt another sound. The WiFi-connected sound stays silent while the screen is off at night.
+- **Why:** the active buzzer has one pitch, so rhythm is the only way to tell outcomes apart without looking at the screen. Web actions also give feedback at the device, so a change made from a phone is noticed in the room.
+- **Cost:** twenty rhythms to learn; similar ones (for example `M M` and `M M M`) need attention. `WebUi` reports outcomes through a new `onEvent` callback.

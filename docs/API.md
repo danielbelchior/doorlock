@@ -45,7 +45,7 @@ Users are addressed by their 0-based position in the list (`index`). Positions s
 
 ```json
 {
-  "version": "2.2.0",
+  "version": "2.3.0",
   "uptime": 93784,
   "heap": 182340,
   "hostname": "keypad",
